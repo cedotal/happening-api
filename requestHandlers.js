@@ -18,105 +18,188 @@ var happeningSchema = mongoose.Schema({
 
 var Happening = mongoose.model('Happening', happeningSchema);
 
+var citySchema = mongoose.Schema({
+    name: String,
+    latitude: Number,
+    longitude: Number
+},
+{
+    'collection': 'cities'
+});
+
+var City = mongoose.model('City', themeSchema);
+
 var db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
 db.once('open', function callback() {
     // yay!
 });
 
+var headers = {};
+// IE8 does not allow domains to be specified, just the *
+// headers["Access-Control-Allow-Origin"] = req.headers.origin;
+headers["Content-Type"] = "application/json";
+headers["Access-Control-Allow-Origin"] = "http://localhost";
+headers["Access-Control-Allow-Methods"] = "POST, GET, PUT, DELETE";
+headers["Access-Control-Allow-Credentials"] = false;
+headers["Access-Control-Allow-Headers"] = "X-Requested-With, X-HTTP-Method-Override, Content-Type, Accept";
+
 // handler for the "themes" path
-function themes(pathname, query, response) {
+function cities(pathname, query, request, response) {
     var pathnameSegments = pathname.split("/");
-    var themeId = parseInt(pathnameSegments[2]);
-    if (!isNaN(themeId)) {
-        // call findOne, filtering for the passed id, specifying which fields to return, and defining the callback to be run on completion
-        Theme.findOne({"id": themeId}, {'_id':0, 'id':1, 'name':1}, function(err, theme) {
-            // now create the actual response
-            response.writeHead(200, {"Content-Type": "text/html"});
-            response.write(JSON.stringify(theme));
-            response.end();
-        });
+    var searchString = query.searchstring;
+    console.log("searchstring: " + searchString);
+    if (request.method === "GET") {
+        if (pathnameSegments[2] === "search") {
+            if (typeof searchString === "string" && searchString !== "") {
+                City.find({ 'nameLowercase': { $regex: '\\A' + searchString.toLowerCase() }}, {'_id': 0, 'name': 1, 'latitude': 1, 'longitude': 1, 'countrycode': 1, 'population': 1 }, function(err, cities) {
+                    // now create the actual response
+                    response.writeHead(200, headers);
+                    response.write(JSON.stringify(cities || "error!"));
+                    response.end();
+                });
+            }
+            else {
+                response.writeHead(400, headers);
+                response.write(JSON.stringify({
+                    "errors": [{
+                            message: "Sorry, but you have to pass in a valid search string to search for cities.",
+                            code: 400
+                        }]
+                }));
+                response.end();
+            };
+        }
+        else {
+            response.writeHead(400, headers);
+            response.write(JSON.stringify({
+            "errors": [{
+                message: "You can't do that with cities (yet).",
+                code: 400
+                }]
+            }));
+        response.end();
+        };
     }
     else {
-        Theme.find(function(err, themes) {
-            // now create the actual response
-            response.writeHead(200, {"Content-Type": "text/html"});
-            response.write(JSON.stringify(themes));
+        response.writeHead(405, headers);
+        response.write(JSON.stringify({
+            "errors": [{
+                message: "That is not (yet) a valid HTTP method.",
+                code: 405
+                }]
+            }));
+        response.end();
+    };
+};
+
+// TODO: switch themes search to themes/search path
+// handler for the "themes" path
+function themes(pathname, query, request, response) {
+    var pathnameSegments = pathname.split("/");
+    var themeId = parseInt(pathnameSegments[2]);
+    var themeName = query.themename;
+    if (request.method === "GET") {
+        if (!isNaN(themeId)) {
+            // call findOne, filtering for the passed id, specifying which fields to return, and defining the callback to be run on completion
+            Theme.findOne({"id": themeId}, {'_id':0, 'id':1, 'name':1}, function(err, theme) {
+                // now create the actual response
+                response.writeHead(200, headers);
+                response.write(JSON.stringify(theme));
+                response.end();
+            });
+        }
+        else {
+            Theme.find(function(err, themes) {
+                // now create the actual response
+                response.writeHead(200, headers);
+                response.write(JSON.stringify(themes));
+                response.end();
+            });
+        };
+    }
+    else if (request.method === "POST") {
+        console.log("handling a POST method for /themes with themename:" + themeName);
+        if (typeof themeName === "string" && themeName !== "") {
+            response.writeHead(200, headers);
+            var theme = new Theme({'name': themeName, 'id': 100000000});
+            theme.save();
+            response.write(JSON.stringify(theme));
             response.end();
-        });
+        }
+        else {
+            response.writeHead(400, headers);
+            response.write({
+                "errors": [{
+                    message: "Sorry, but you have to pass in a valid theme name to POST a new theme.",
+                    code: 400
+                    }]
+            });
+            response.end();
+        };
+    }
+    else {
+        response.writeHead(405, headers);
+        response.write({
+                "errors": [{
+                    message: "That is not (yet) a valid HTTP method.",
+                    code: 400
+                    }]
+            });
+        response.end();
     };
 };
 
 // handler for the "happenings" path
-function happenings(pathname, query, response) {
+function happenings(pathname, query, request, response) {
     var pathnameSegments = pathname.split("/");
     var happeningId = parseInt(pathnameSegments[2]);
     var themeId = parseInt(query.themeid);
-    if (!isNaN(happeningId)) {
-        // call findOne, filtering for the passed id, specifying which fields to return, and defining the callback to be run on completion
-        Happening.findOne({"id": happeningId}, {'_id':0, 'id':1, 'name':1, 'themes': 1}, function(err, happening) {
-            // now create the actual response
-            response.writeHead(200, {"Content-Type": "text/html"});
-            response.write(JSON.stringify(happening));
-            response.end();
-        });
+    
+    if (request.method === "GET") {
+        if (!isNaN(happeningId)) {
+            // call findOne, filtering for the passed id, specifying which fields to return, and defining the callback to be run on completion
+            Happening.findOne({"id": happeningId}, {'_id':0, 'id':1, 'name':1, 'themes': 1}, function(err, happening) {
+                // now create the actual response
+                response.writeHead(200, headers);
+                response.write(JSON.stringify(happening));
+                response.end();
+            });
+        }
+        else if (!isNaN(themeId)){
+            // call findOne, filtering for the passed id, specifying which fields to return, and defining the callback to be run on completion
+            Happening.find({"themes": themeId}, {'_id':0, 'id':1, 'name':1, 'themes': 1}, function(err, happenings) {
+                // now create the actual response
+                response.writeHead(200, headers);
+                response.write(JSON.stringify(happenings));
+                response.end();
+            });
+        }
+        else {
+            Happening.find({}, function(err, happenings) {
+                // now create the actual response
+                response.writeHead(200, headers);
+                response.write(JSON.stringify(happenings));
+                response.end();
+            });
+        };
     }
-    else if (!isNaN(themeId)){
-        // call findOne, filtering for the passed id, specifying which fields to return, and defining the callback to be run on completion
-        Happening.find({"themes": themeId}, {'_id':0, 'id':1, 'name':1, 'themes': 1}, function(err, happenings) {
-            // now create the actual response
-            response.writeHead(200, {"Content-Type": "text/html"});
-            response.write(JSON.stringify(happenings));
-            response.end();
-        });
+    else if (request.method === "POST") {
+        response.writeHead(405, headers);
+        response.write("Can't POST to Happenings yet!");
+        response.end();
     }
     else {
-        Happening.find({}, function(err, happenings) {
-            // now create the actual response
-            response.writeHead(200, {"Content-Type": "text/html"});
-            response.write(JSON.stringify(happenings));
-            response.end();
-        });
+        response.writeHead(405, headers);
+        response.write("That is not (yet) a valid HTTP method.");
+        response.end();
     };
 };
 //
 // make this file accessible to others in node.js
+exports.cities = cities;
 exports.themes = themes;
 exports.happenings = happenings;
-
-/*
-
-// put mongoose in a var, then connect it to the database
-var mongoose = require('mongoose');
-mongoose.connect('mongodb://localhost/kittens');
-
-// create a schema for the Theme model
-var themeSchema = mongoose.Schema({
-    "name": String,
-    "id": Number
-});
-    
-// create the City model by passing in its schema
-var Theme = mongoose.model('Theme', themeSchema); 
-
-// function to return a response to a cities query
-function themes(query, response) {
-    // write out header
-    response.writeHead(200, {"Content-Type": "text/html"});
-    
-    // execute the query
-    Theme.find(function (err, payload) {
-        if (err) return handleError(err);
-        response.write(JSON.stringify(payload));
-        // response.write(cities.toString());
-        response.end();
-    });
-    
-};
-
-*/
-
-
 
 // saving this for later
 // create a Query object that finds all cities named "New York City"

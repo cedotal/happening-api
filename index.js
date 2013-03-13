@@ -6,5 +6,7 @@ var handle = {};
 
 handle["themes"] = requestHandlers.themes;
 handle["happenings"] = requestHandlers.happenings;
+handle["cities"] = requestHandlers.cities;
+
 
 server.start(router.route, handle);
