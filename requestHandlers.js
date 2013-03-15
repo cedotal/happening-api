@@ -47,8 +47,7 @@ headers["Access-Control-Allow-Headers"] = "X-Requested-With, X-HTTP-Method-Overr
 // handler for the "themes" path
 function cities(pathname, query, request, response) {
     var pathnameSegments = pathname.split("/");
-    var searchString = query.searchstring;
-    console.log("searchstring: " + searchString);
+    var searchString = query.term;
     if (request.method === "GET") {
         if (pathnameSegments[2] === "search") {
             if (typeof searchString === "string" && searchString !== "") {
@@ -60,7 +59,7 @@ function cities(pathname, query, request, response) {
                 });
             }
             else {
-                response.writeHead(400, headers);
+                response.writeHead(200, headers);
                 response.write(JSON.stringify({
                     "errors": [{
                             message: "Sorry, but you have to pass in a valid search string to search for cities.",
@@ -98,7 +97,7 @@ function cities(pathname, query, request, response) {
 function themes(pathname, query, request, response) {
     var pathnameSegments = pathname.split("/");
     var themeId = parseInt(pathnameSegments[2]);
-    var themeName = query.themename;
+    var themeName = query.term;
     if (request.method === "GET") {
         if (!isNaN(themeId)) {
             // call findOne, filtering for the passed id, specifying which fields to return, and defining the callback to be run on completion
