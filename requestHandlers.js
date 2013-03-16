@@ -5,6 +5,7 @@ mongoose.connect('mongodb://localhost/happeningTest');
 
 var themeSchema = mongoose.Schema({
     name: String,
+    nameLowerCase: String,
     id: Number
 });
 
@@ -43,15 +44,15 @@ headers["Access-Control-Allow-Origin"] = "http://localhost";
 headers["Access-Control-Allow-Methods"] = "POST, GET, PUT, DELETE";
 headers["Access-Control-Allow-Credentials"] = false;
 headers["Access-Control-Allow-Headers"] = "X-Requested-With, X-HTTP-Method-Override, Content-Type, Accept";
-
+//
 // handler for the "themes" path
 function cities(pathname, query, request, response) {
     var pathnameSegments = pathname.split("/");
-    var searchString = query.term;
+    var searchString = query.searchstring;
     if (request.method === "GET") {
         if (pathnameSegments[2] === "search") {
             if (typeof searchString === "string" && searchString !== "") {
-                City.find({ 'nameLowercase': { $regex: '\\A' + searchString.toLowerCase() }}, {'_id': 0, 'name': 1, 'latitude': 1, 'longitude': 1, 'countrycode': 1, 'population': 1 }, function(err, cities) {
+                City.find({ 'nameLowerCase': { $regex: '\\A' + searchString.toLowerCase() }}, {'_id': 0, 'name': 1, 'latitude': 1, 'longitude': 1, 'countryCode': 1, 'population': 1 }).sort({population: -1}).exec( function(err, cities) {
                     // now create the actual response
                     response.writeHead(200, headers);
                     response.write(JSON.stringify(cities || "error!"));
@@ -97,7 +98,8 @@ function cities(pathname, query, request, response) {
 function themes(pathname, query, request, response) {
     var pathnameSegments = pathname.split("/");
     var themeId = parseInt(pathnameSegments[2]);
-    var themeName = query.term;
+    var searchString = query.searchstring;
+    var themeName = query.themename;
     if (request.method === "GET") {
         if (!isNaN(themeId)) {
             // call findOne, filtering for the passed id, specifying which fields to return, and defining the callback to be run on completion
@@ -109,31 +111,32 @@ function themes(pathname, query, request, response) {
             });
         }
         else {
-            Theme.find(function(err, themes) {
+            Theme.find({ 'nameLowerCase': { $regex: '\\A' + searchString.toLowerCase() }}, {'_id': 0, 'name': 1, 'id': 1 }, function(err, themes) {
                 // now create the actual response
                 response.writeHead(200, headers);
                 response.write(JSON.stringify(themes));
                 response.end();
+
             });
         };
     }
     else if (request.method === "POST") {
-        console.log("handling a POST method for /themes with themename:" + themeName);
+        console.log("handling a POST request for themes");
         if (typeof themeName === "string" && themeName !== "") {
             response.writeHead(200, headers);
-            var theme = new Theme({'name': themeName, 'id': 100000000});
+            var theme = new Theme({'name': themeName, 'nameLowerCase': themeName.toLowerCase(), 'id': 100000000});
             theme.save();
             response.write(JSON.stringify(theme));
             response.end();
         }
         else {
             response.writeHead(400, headers);
-            response.write({
+            response.write(JSON.stringify({
                 "errors": [{
                     message: "Sorry, but you have to pass in a valid theme name to POST a new theme.",
                     code: 400
                     }]
-            });
+            }));
             response.end();
         };
     }
@@ -184,9 +187,24 @@ function happenings(pathname, query, request, response) {
         };
     }
     else if (request.method === "POST") {
-        response.writeHead(405, headers);
-        response.write("Can't POST to Happenings yet!");
-        response.end();
+        console.log("handling a POST request for happenings");
+        if (typeof themeName === "string" && themeName !== "") {
+            response.writeHead(200, headers);
+            var theme = new Theme({'name': themeName, 'nameLowerCase': themeName.toLowerCase(), 'id': 100000000});
+            theme.save();
+            response.write(JSON.stringify(theme));
+            response.end();
+        }
+        else {
+            response.writeHead(400, headers);
+            response.write(JSON.stringify({
+                "errors": [{
+                    message: "Sorry, but you have to pass in a valid begin date, end date, name, and location.",
+                    code: 400
+                    }]
+            }));
+            response.end();
+        };
     }
     else {
         response.writeHead(405, headers);
