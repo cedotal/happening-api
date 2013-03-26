@@ -14,7 +14,19 @@ var Theme = mongoose.model('Theme', themeSchema);
 var happeningSchema = mongoose.Schema({
     name: String,
     id: Number,
-    themes: Array
+    themes: Array,
+    dates: {
+        beginDate: Date,
+        endDate: Date
+    },
+    location: {
+        latitude: Number,
+        longitude: Number,
+        address: {
+            city: String,
+            country: String
+        }
+    }
 });
 
 var Happening = mongoose.model('Happening', happeningSchema);
@@ -44,7 +56,7 @@ headers["Access-Control-Allow-Origin"] = "http://localhost";
 headers["Access-Control-Allow-Methods"] = "POST, GET, PUT, DELETE";
 headers["Access-Control-Allow-Credentials"] = false;
 headers["Access-Control-Allow-Headers"] = "X-Requested-With, X-HTTP-Method-Override, Content-Type, Accept";
-//
+
 // handler for the "themes" path
 function cities(pathname, query, request, response) {
     var pathnameSegments = pathname.split("/");
@@ -52,7 +64,7 @@ function cities(pathname, query, request, response) {
     if (request.method === "GET") {
         if (pathnameSegments[2] === "search") {
             if (typeof searchString === "string" && searchString !== "") {
-                City.find({ 'nameLowerCase': { $regex: '\\A' + searchString.toLowerCase() }}, {'_id': 0, 'name': 1, 'latitude': 1, 'longitude': 1, 'countryCode': 1, 'population': 1 }).sort({population: -1}).exec( function(err, cities) {
+                City.find({ 'nameLowerCase': { $regex: '\\A' + searchString.toLowerCase() }}, {'_id': 0, 'name': 1, 'latitude': 1, 'longitude': 1, 'countryCode': 1, 'population': 1 }).limit(8).sort({population: -1}).exec( function(err, cities) {
                     // now create the actual response
                     response.writeHead(200, headers);
                     response.write(JSON.stringify(cities || "error!"));
@@ -97,11 +109,20 @@ function cities(pathname, query, request, response) {
 // handler for the "themes" path
 function themes(pathname, query, request, response) {
     var pathnameSegments = pathname.split("/");
-    var themeId = parseInt(pathnameSegments[2]);
+    var themeId = pathnameSegments[2];
     var searchString = query.searchstring;
-    var themeName = query.themename;
-    if (request.method === "GET") {
-        if (!isNaN(themeId)) {
+    var name = query.name;
+    console.log(themeId);
+    if (request.method === "GET") {//
+        if (themeId === "search" && searchString !== undefined) {
+            Theme.find({ 'nameLowerCase': { $regex: '\\A' + searchString.toLowerCase() }}, {'_id': 0, 'name': 1, 'id': 1 }, function(err, themes) {
+                // now create the actual response
+                response.writeHead(200, headers);
+                response.write(JSON.stringify(themes));
+                response.end();
+            });
+        }
+        else if (!isNaN(parseInt(themeId))) {
             // call findOne, filtering for the passed id, specifying which fields to return, and defining the callback to be run on completion
             Theme.findOne({"id": themeId}, {'_id':0, 'id':1, 'name':1}, function(err, theme) {
                 // now create the actual response
@@ -111,20 +132,21 @@ function themes(pathname, query, request, response) {
             });
         }
         else {
-            Theme.find({ 'nameLowerCase': { $regex: '\\A' + searchString.toLowerCase() }}, {'_id': 0, 'name': 1, 'id': 1 }, function(err, themes) {
-                // now create the actual response
-                response.writeHead(200, headers);
-                response.write(JSON.stringify(themes));
-                response.end();
-
-            });
+            response.writeHead(400, headers);
+            response.write(JSON.stringify({
+                "errors": [{
+                    message: "Sorry, but you can't do that with a GET request for themes.",
+                    code: 400
+                    }]
+            }));
+            response.end();
         };
     }
     else if (request.method === "POST") {
         console.log("handling a POST request for themes");
-        if (typeof themeName === "string" && themeName !== "") {
+        if (typeof name === "string" && name !== "") {
             response.writeHead(200, headers);
-            var theme = new Theme({'name': themeName, 'nameLowerCase': themeName.toLowerCase(), 'id': 100000000});
+            var theme = new Theme({'name': name, 'nameLowerCase': name.toLowerCase(), 'id': 100000000});
             theme.save();
             response.write(JSON.stringify(theme));
             response.end();
@@ -161,7 +183,7 @@ function happenings(pathname, query, request, response) {
     if (request.method === "GET") {
         if (!isNaN(happeningId)) {
             // call findOne, filtering for the passed id, specifying which fields to return, and defining the callback to be run on completion
-            Happening.findOne({"id": happeningId}, {'_id':0, 'id':1, 'name':1, 'themes': 1}, function(err, happening) {
+            Happening.findOne({"id": happeningId}, {'_id':0, 'id':1, 'name':1, 'themes': 1, 'location': 1}).exec( function(err, happening) {
                 // now create the actual response
                 response.writeHead(200, headers);
                 response.write(JSON.stringify(happening));
@@ -170,7 +192,8 @@ function happenings(pathname, query, request, response) {
         }
         else if (!isNaN(themeId)){
             // call findOne, filtering for the passed id, specifying which fields to return, and defining the callback to be run on completion
-            Happening.find({"themes": themeId}, {'_id':0, 'id':1, 'name':1, 'themes': 1}, function(err, happenings) {
+            console.log("filtering happenings by theme id");
+            Happening.find({themes: themeId}).limit(20).exec(function(err, happenings) {
                 // now create the actual response
                 response.writeHead(200, headers);
                 response.write(JSON.stringify(happenings));
@@ -178,7 +201,7 @@ function happenings(pathname, query, request, response) {
             });
         }
         else {
-            Happening.find({}, function(err, happenings) {
+            Happening.find().limit(20).exec(function(err, happenings) {
                 // now create the actual response
                 response.writeHead(200, headers);
                 response.write(JSON.stringify(happenings));
@@ -188,20 +211,46 @@ function happenings(pathname, query, request, response) {
     }
     else if (request.method === "POST") {
         console.log("handling a POST request for happenings");
-        if (typeof themeName === "string" && themeName !== "") {
+        console.log(query);
+        var beginDate = new Date(query.begindate),
+            endDate = new Date(query.enddate),
+            name = query.name,
+            city = query.city,
+            country = query.country,
+            latitude = parseInt(query.latitude),
+            longitude = parseInt(query.longitude),
+            theme = parseInt(query.theme);
+        if (!isNaN(beginDate) && !isNaN(endDate) && typeof name === "string" && typeof city === "string" && typeof country === "string" && !isNaN(latitude) && !isNaN(longitude) && -180 < latitude && latitude < 180 && -180 < longitude && longitude < 180 && !isNaN(theme)) {
             response.writeHead(200, headers);
-            var theme = new Theme({'name': themeName, 'nameLowerCase': themeName.toLowerCase(), 'id': 100000000});
-            theme.save();
-            response.write(JSON.stringify(theme));
+            console.log("beginDate: " + beginDate + " --- endDate: " + endDate);
+            var happening = new Happening({
+                name: name,
+                id: 100000000,
+                themes: [theme],
+                dates: {
+                    beginDate: beginDate,
+                    endDate: endDate
+                },
+                location: {
+                    latitude: latitude,
+                    longitude: longitude,
+                    address: {
+                        city: city,
+                        country: country
+                    }
+                }
+            });
+            happening.save();
+            response.write(JSON.stringify(happening));
             response.end();
         }
         else {
             response.writeHead(400, headers);
             response.write(JSON.stringify({
                 "errors": [{
-                    message: "Sorry, but you have to pass in a valid begin date, end date, name, and location.",
+                    message: "Sorry, but you have to pass in a valid begin date, end date, name, city, country, theme id, latitude, and longitude.",
                     code: 400
-                    }]
+                }]
             }));
             response.end();
         };
@@ -213,11 +262,7 @@ function happenings(pathname, query, request, response) {
     };
 };
 //
-// make this file accessible to others in node.js
+// make this file accessible to other files in node.js
 exports.cities = cities;
 exports.themes = themes;
 exports.happenings = happenings;
-
-// saving this for later
-// create a Query object that finds all cities named "New York City"
-// var query = City.find({ 'name': { $regex: '\\A' + searchString }});
