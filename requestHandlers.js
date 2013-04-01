@@ -50,7 +50,7 @@ db.once('open', function callback() {
 
 var headers = {};
 // IE8 does not allow domains to be specified, just the *
-headers["Access-Control-Allow-Origin"] = request.headers.origin;
+headers["Access-Control-Allow-Origin"] = "*";
 headers["Content-Type"] = "application/json";
 // headers["Access-Control-Allow-Origin"] = "http://localhost";
 headers["Access-Control-Allow-Methods"] = "POST, GET, PUT, DELETE";
