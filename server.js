@@ -12,6 +12,7 @@ function start(route, handle) {
         request.setEncoding("utf8");
         
         request.addListener("end", function() {
+            console.log("end event detected; routing accordingly");
             route(handle, pathname, query, request, response);
         });
     }
