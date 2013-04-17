@@ -44,11 +44,6 @@ var setupMethodEndpoint = function(app, prefix, method, methodObject) {
     // a function that wraps the success function for an endpoint in a series of checks that return an error if the request was improperly formed
     var validityCheckWrappingFunction = function(req, res) {
         var parameterOptions = methodObject[method].parameterOptions;
-        console.log('method: ' + method);
-        console.log('methodObject[method].parameterOptions:');
-        console.log(methodObject[method].parameterOptions);
-        console.log('parameterOptions:');
-        console.log(parameterOptions);
         // set up a container for the encoding of any errors encountered in the checking
         var errorArray = [];
         // get query parameters for validity checks
@@ -74,7 +69,6 @@ var setupMethodEndpoint = function(app, prefix, method, methodObject) {
         };
         // check that all required parameters were passed
         for (var parameter in parameterOptions) {
-            console.log(parameter);
             if (parameterOptions[parameter].required === true && queryParameters[parameter] === undefined) {
                 errorArray.push({
                     name: parameter + " is required",
@@ -113,7 +107,7 @@ var setupMethodEndpoint = function(app, prefix, method, methodObject) {
             methodObject[method].method(req, res);
         };
     };
-    console.log(method + ': ' + prefix);
+    console.log('setting up endpoint at ' + method + ': ' + prefix);
     app[method.toLowerCase()](prefix, validityCheckWrappingFunction);
 };
 

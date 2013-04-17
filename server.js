@@ -25,7 +25,7 @@ var Theme = mongoose.model('Theme', themeSchema);
 var happeningSchema = mongoose.Schema({
     name: String,
     id: Number,
-    themes: Array,
+    themes: [mongoose.Types.ObjectId],
     dates: {
         beginDate: Date,
         endDate: Date
@@ -70,11 +70,11 @@ var getHappenings = function(req, res) {
 var postHappening = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
     var searchString = queryParameters.searchstring;
-    var beginDate = new Date(query.begindate),
-        endDate = new Date(query.enddate),
-        name = query.name,
-        cityId = query.cityid,
-        themeId = query.themeid;
+    var beginDate = new Date(queryParameters.begindate),
+        endDate = new Date(queryParameters.enddate),
+        name = queryParameters.name,
+        cityId = queryParameters.cityid,
+        themeId = queryParameters.themeid;
         var happening = new Happening({
             name: name,
             themes: [themeId],
@@ -105,7 +105,6 @@ var postTheme = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
     var name = queryParameters.name;
     Theme.find({nameLowerCase: name.toLowerCase()}).exec(function(err, nameMatches) {
-        console.log('nameMatches ' + nameMatches);
         if (nameMatches.length === 0) {
             var theme = new Theme({'name': name, 'nameLowerCase': name.toLowerCase()});
             theme.save();
