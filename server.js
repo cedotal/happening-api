@@ -25,18 +25,13 @@ var Theme = mongoose.model('Theme', themeSchema);
 var happeningSchema = mongoose.Schema({
     name: String,
     id: Number,
-    themes: [mongoose.Types.ObjectId],
+    themes: [mongoose.Schema.ObjectId],
     dates: {
         beginDate: Date,
         endDate: Date
     },
     location: {
-        latitude: Number,
-        longitude: Number,
-        address: {
-            city: String,
-            country: String
-        }
+        cityId: mongoose.Schema.ObjectId,
     }
 });
 
@@ -61,9 +56,29 @@ var getHappenings = function(req, res) {
         queryObject._id = themeId;
     };
     Happening.find(queryObject).limit(20).exec(function(err, happenings) {
-        var queryParameters = (url.parse(req.url, true).query);
-        var searchString = queryParameters.searchstring;
-        res.send(JSON.stringify(happenings));
+        // TODO write subquery
+        var cityIdArray = happenings.map(function(happening){ return happening.location.cityId});
+        City.find({geonameID: {$in: cityIdArray}}, {geonameID: 1, name: 1, countryCode: 1, latitude: 1, longitude: 1, admin1Code: 1}).exec(function(err, cities){
+            var cityObjectArray = {};
+            cities.forEach(function(city) {
+                cityObjectArray[city.geonameID] = city;
+            });
+            var joinedHappenings = happenings.map(function(happening){
+                var matchedCity = cityObjectArray[happening.location.cityId];
+                var newHappening = {};
+                newHappening.name = happening.name;
+                newHappening.dates = happening.dates;
+                newHappening.themes = happening.themes;
+                newHappening.location = {};
+                newHappening.location.latitude = matchedCity.latitude;
+                newHappening.location.longitude = matchedCity.longitude;
+                newHappening.location.countryCode = matchedCity.countryCode;
+                newHappening.location.name = matchedCity.name;
+                newHappening.location.admin1Code = matchedCity.admin1Code;
+                return newHappening;
+            });
+            res.send(JSON.stringify(joinedHappenings));
+        });
     });
 };
 
@@ -83,7 +98,7 @@ var postHappening = function(req, res) {
                 endDate: endDate
             },
             location: {
-                cityId: cityId
+                geonameId: geonameId
             }
         });
         happening.save();
@@ -124,8 +139,7 @@ var postTheme = function(req, res) {
 var getCities = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
     var searchString = queryParameters.searchstring;
-    City.find({ 'nameLowerCase': { $regex: '\\A' + searchString.toLowerCase() }}, {'_id': 0, 'name': 1, 'latitude': 1, 'longitude': 1, 'countryCode': 1, 'population': 1 }).limit(8).sort({population: -1}).exec( function(err, cities) {
-        // now create the actual response
+    City.find({ 'nameLowerCase': { $regex: '\\A' + searchString.toLowerCase() }}, {'_id': 0, 'name': 1, 'latitude': 1, 'longitude': 1, 'countryCode': 1, 'population': 1, 'geonameID': 1 }).limit(8).sort({population: -1}).exec( function(err, cities) {
         res.send(JSON.stringify(cities));
     });
 };
@@ -171,15 +185,6 @@ var urlPathTree = {
     },
     themes: {
         _endpoint: {
-            GET: {
-                method: getThemes,
-                parameterOptions: {
-                    searchstring: {
-                        type: 'string',
-                        required: true,
-                    }
-                }
-            },
             POST: {
                 method: postTheme,
                 parameterOptions: {
@@ -189,16 +194,31 @@ var urlPathTree = {
                     }
                 }
             }
+        },
+        search: {
+            _endpoint: {
+                GET: {
+                    method: getThemes,
+                    parameterOptions: {
+                        searchstring: {
+                            type: 'string',
+                            required: true,
+                        }
+                    }
+                }
+            }
         }
     },
     cities: {
-        _endpoint: {
-            GET: {
-                method: getCities,
-                parameterOptions: {
-                    searchstring: {
-                        type: 'string',
-                        required: true,
+        search: {
+            _endpoint: {
+                GET: {
+                    method: getCities,
+                    parameterOptions: {
+                        searchstring: {
+                            type: 'string',
+                            required: true,
+                        }
                     }
                 }
             }
@@ -210,5 +230,8 @@ var treehouse = require('./treehouse');
 
 // parse the urlPathTree with setupRouters
 treehouse.setupRouters(app, urlPathTree, '/');
+
+var testExposure = 'exposed string';
+exports.testExposure = testExposure;
 
 app.listen(3000);
