@@ -31,7 +31,7 @@ var happeningSchema = mongoose.Schema({
         endDate: Date
     },
     location: {
-        cityId: mongoose.Schema.ObjectId,
+        geonameID: Number,
     }
 });
 
@@ -53,31 +53,37 @@ var getHappenings = function(req, res) {
     var themeId = queryParameters.themeid;
     var queryObject = {};
     if (themeId !== undefined) {
-        queryObject._id = themeId;
+        var themeIdObject = new mongoose.Types.ObjectId.fromString(themeId);
+        console.log(themeIdObject);
+        queryObject.themes = themeIdObject;
     };
+    console.log(queryObject);
+    // TODO: conditionally add $near operator to query object if lat and long are passed in
     Happening.find(queryObject).limit(20).exec(function(err, happenings) {
-        // TODO write subquery
-        var cityIdArray = happenings.map(function(happening){ return happening.location.cityId});
+        var cityIdArray = happenings.map(function(happening){ return happening.location.geonameID});
         City.find({geonameID: {$in: cityIdArray}}, {geonameID: 1, name: 1, countryCode: 1, latitude: 1, longitude: 1, admin1Code: 1}).exec(function(err, cities){
             var cityObjectArray = {};
             cities.forEach(function(city) {
-                cityObjectArray[city.geonameID] = city;
+                cityObjectArray[city.get('geonameID')] = city;
             });
             var joinedHappenings = happenings.map(function(happening){
-                var matchedCity = cityObjectArray[happening.location.cityId];
+                var matchedCity = cityObjectArray[happening.location.geonameID];
+                var newLocation = {};
+                newLocation.cityName = matchedCity.get('name');
+                newLocation.cityId = matchedCity.get('geonameID');
+                newLocation.latitude = matchedCity.get('latitude');
+                newLocation.longitude = matchedCity.get('longitude');
+                newLocation.countryCode = matchedCity.get('countryCode');
+                newLocation.admin1Code = matchedCity.get('admin1Code');
+                happening.set({'location': true});
                 var newHappening = {};
-                newHappening.name = happening.name;
-                newHappening.dates = happening.dates;
-                newHappening.themes = happening.themes;
-                newHappening.location = {};
-                newHappening.location.latitude = matchedCity.latitude;
-                newHappening.location.longitude = matchedCity.longitude;
-                newHappening.location.countryCode = matchedCity.countryCode;
-                newHappening.location.name = matchedCity.name;
-                newHappening.location.admin1Code = matchedCity.admin1Code;
+                newHappening.name = happening.get('name');
+                newHappening.dates = happening.get('dates');
+                newHappening.themes = happening.get('themes');
+                newHappening.location = newLocation;
                 return newHappening;
             });
-            res.send(JSON.stringify(joinedHappenings));
+            res.send(joinedHappenings);
         });
     });
 };
@@ -88,7 +94,7 @@ var postHappening = function(req, res) {
     var beginDate = new Date(queryParameters.begindate),
         endDate = new Date(queryParameters.enddate),
         name = queryParameters.name,
-        cityId = queryParameters.cityid,
+        geonameID = queryParameters.cityid,
         themeId = queryParameters.themeid;
         var happening = new Happening({
             name: name,
@@ -98,11 +104,11 @@ var postHappening = function(req, res) {
                 endDate: endDate
             },
             location: {
-                geonameId: geonameId
+                geonameID: geonameID
             }
         });
         happening.save();
-        res.send(JSON.stringify(happening));
+        res.send(happening);
 };
 
 // define function to be executed when a user tries to search for themes
@@ -111,7 +117,7 @@ var getThemes = function(req, res) {
     var searchString = queryParameters.searchstring;
     Theme.find({ 'nameLowerCase': { $regex: '\\A' + searchString.toLowerCase() }}, {'_id': 1, 'name': 1}, function(err, themes) {
         // now create the actual response
-        res.send(JSON.stringify(themes));
+        res.send(themes);
     });
 };
 
@@ -123,7 +129,7 @@ var postTheme = function(req, res) {
         if (nameMatches.length === 0) {
             var theme = new Theme({'name': name, 'nameLowerCase': name.toLowerCase()});
             theme.save();
-            res.send(JSON.stringify(theme));
+            res.send(theme);
         }
         else {
             var errorObject = {
@@ -139,8 +145,8 @@ var postTheme = function(req, res) {
 var getCities = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
     var searchString = queryParameters.searchstring;
-    City.find({ 'nameLowerCase': { $regex: '\\A' + searchString.toLowerCase() }}, {'_id': 0, 'name': 1, 'latitude': 1, 'longitude': 1, 'countryCode': 1, 'population': 1, 'geonameID': 1 }).limit(8).sort({population: -1}).exec( function(err, cities) {
-        res.send(JSON.stringify(cities));
+    City.find({ 'nameLowerCase': { $regex: '\\A' + searchString.toLowerCase() }}, {'_id': 0, 'name': 1, 'latitude': 1, 'longitude': 1, 'countryCode': 1, 'geonameID': 1 }).limit(8).sort({population: -1}).exec( function(err, cities) {
+        res.send(cities);
     });
 };
 
@@ -172,7 +178,7 @@ var urlPathTree = {
                         required: true
                     },
                     cityid: {
-                        type: 'mongoObjectId',
+                        type: 'number',
                         required: true
                     },
                     themeid: {
