@@ -1,6 +1,6 @@
 {
     "name": "happening-api",
-    "description": "an api for a way to find humna gatherings",
+    "description": "an api for a way to find human gatherings",
     "version": "0.0.1",
     "private": true,
     "dependencies": {

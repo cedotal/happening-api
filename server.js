@@ -32,7 +32,8 @@ var happeningSchema = mongoose.Schema({
     },
     location: {
         geonameID: Number,
-    }
+    },
+    websiteUrl: String
 });
 
 var Happening = mongoose.model('Happening', happeningSchema);
@@ -80,6 +81,7 @@ var getHappenings = function(req, res) {
                 newHappening.name = happening.get('name');
                 newHappening.dates = happening.get('dates');
                 newHappening.themes = happening.get('themes');
+                newLocation.websiteUrl = happening.get('websiteUrl');
                 newHappening.location = newLocation;
                 return newHappening;
             });
@@ -96,6 +98,12 @@ var postHappening = function(req, res) {
         name = queryParameters.name,
         geonameID = queryParameters.cityid,
         themeId = queryParameters.themeid;
+        websiteUrl = queryParameters.websiteurl;
+        console.log(queryParameters);
+        // check if url is complete; if not, modify it
+        if (websiteUrl.substring(0,7) !== 'http://') {
+            websiteUrl = 'http://' + websiteUrl;
+        };
         var happening = new Happening({
             name: name,
             themes: [themeId],
@@ -105,7 +113,8 @@ var postHappening = function(req, res) {
             },
             location: {
                 geonameID: geonameID
-            }
+            },
+            websiteUrl: websiteUrl
         });
         happening.save();
         res.send(happening);

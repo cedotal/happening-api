@@ -1,6 +1,9 @@
 // require url for handling querystring parameters
 var url = require('url');
 
+// require http for validating urls
+var http = require('http');
+
 // merge two objects, but only keep the attributes and values in object A if object B also has that attribute
 var unionMergeObjects = function(objectA, objectB) {
     var objectC = {};
@@ -36,6 +39,13 @@ var parameterValidityChecks = {
     mongoObjectId: function(parameter) {
         var objectIdRegExp = new RegExp("^[0-9a-fA-F]{24}$");
         return objectIdRegExp.test(parameter);
+    },
+    url: function(parameter) {
+        var urlValidity = false;
+        if (parameter.indexOf('.') !== -1) {
+            urlValidity = true;
+        };
+        return urlValidity;
     }
 };
 
@@ -43,7 +53,7 @@ var parameterValidityChecks = {
 var setupMethodEndpoint = function(app, prefix, method, methodObject) {
     // a function that wraps the success function for an endpoint in a series of checks that return an error if the request was improperly formed
     var validityCheckWrappingFunction = function(req, res) {
-        res.set('Access-Control-Allow-Origin', 'http://localhost');
+        res.set('Access-Control-Allow-Origin', 'http://localhost:3001');
         res.set('Access-Control-Allow-Methods', 'GET, POST');
         res.set('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type');
         var parameterOptions = methodObject[method].parameterOptions;
