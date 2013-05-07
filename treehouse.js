@@ -147,8 +147,15 @@ var setupRouters = function(app, urlPathTree, prefix) {
     for (var segment in urlPathTree) {
         // express requires a '/' as the base for paths, so we only need to add on a trailing slash if we're not at the domain root  
         if (prefix !== '/') { prefix += '/' };
+        // handle variable segments
+        if (segment === '_variable') {
+            prefix += ':variable'
+        }
+        else {
+            prefix += segment;
+        };
         // setup this branch of the tree
-        setupRouters(app, urlPathTree[segment], (prefix + segment));
+        setupRouters(app, urlPathTree[segment], (prefix));
     };
 };
 

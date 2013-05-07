@@ -31,7 +31,7 @@ var happeningSchema = mongoose.Schema({
         endDate: Date
     },
     location: {
-        geonameID: Number,
+        geonameID: Number
     },
     websiteUrl: String
 });
@@ -62,7 +62,7 @@ var getHappenings = function(req, res) {
     // TODO: conditionally add $near operator to query object if lat and long are passed in
     Happening.find(queryObject).limit(20).exec(function(err, happenings) {
         var cityIdArray = happenings.map(function(happening){ return happening.location.geonameID});
-        City.find({geonameID: {$in: cityIdArray}}, {geonameID: 1, name: 1, countryCode: 1, latitude: 1, longitude: 1, admin1Code: 1}).exec(function(err, cities){
+        City.find({geonameID: {$in: cityIdArray}}, {geonameID: 1, name: 1, countryCode: 1, latitude: 1, longitude: 1, admin1Code: 1, websiteUrl: 1, _id: 1}).exec(function(err, cities){
             var cityObjectArray = {};
             cities.forEach(function(city) {
                 cityObjectArray[city.get('geonameID')] = city;
@@ -81,7 +81,8 @@ var getHappenings = function(req, res) {
                 newHappening.name = happening.get('name');
                 newHappening.dates = happening.get('dates');
                 newHappening.themes = happening.get('themes');
-                newLocation.websiteUrl = happening.get('websiteUrl');
+                newHappening.websiteUrl = happening.get('websiteUrl');
+                newHappening._id = happening.get('_id');
                 newHappening.location = newLocation;
                 return newHappening;
             });
@@ -118,6 +119,17 @@ var postHappening = function(req, res) {
         });
         happening.save();
         res.send(happening);
+};
+
+var getHappening = function(req, res){
+    var happeningId = req.params.variable;
+    var queryObject = { _id: happeningId };
+    Happening.find(queryObject).exec(function(err, happenings) {
+        res.send(happenings);
+    });
+};
+
+var putHappening = function(req, res){
 };
 
 // define function to be executed when a user tries to search for themes
@@ -168,6 +180,9 @@ var urlPathTree = {
                 parameterOptions: {
                     themeid: {
                         type: 'mongoObjectId'
+                    },
+                    cityid: {
+                        type: 'number'
                     }
                 }
             },
@@ -193,6 +208,40 @@ var urlPathTree = {
                     themeid: {
                         type: 'mongoObjectId',
                         required: true
+                    },
+                    websiteurl: {
+                        type: 'url',
+                        required: true
+                    }
+                }
+            }
+        },
+        _variable: {
+            _endpoint: {
+                GET: {
+                    method: getHappening
+                },
+                PUT: {
+                    method: putHappening,
+                    parameterOptions: {
+                        name: {
+                            type: 'string'
+                        },
+                        begindate: {
+                            type: 'date'
+                        },
+                        enddate: {
+                            type: 'date'
+                        },
+                        cityid: {
+                            type: 'number'
+                        },
+                        themeid: {
+                            type: 'mongoObjectId'
+                        },
+                        websiteurl: {
+                            type: 'url'
+                        }
                     }
                 }
             }
