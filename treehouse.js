@@ -145,17 +145,18 @@ var setupRouters = function(app, urlPathTree, prefix) {
     };
     // then, for every branch of the tree at this level, continue parsing
     for (var segment in urlPathTree) {
+        var localToSegmentPrefix = prefix;
         // express requires a '/' as the base for paths, so we only need to add on a trailing slash if we're not at the domain root  
-        if (prefix !== '/') { prefix += '/' };
+        if (localToSegmentPrefix !== '/') { localToSegmentPrefix += '/' };
         // handle variable segments
         if (segment === '_variable') {
-            prefix += ':variable'
+            localToSegmentPrefix += ':variable'
         }
         else {
-            prefix += segment;
+            localToSegmentPrefix += segment;
         };
         // setup this branch of the tree
-        setupRouters(app, urlPathTree[segment], (prefix));
+        setupRouters(app, urlPathTree[segment], localToSegmentPrefix);
     };
 };
 

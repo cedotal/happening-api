@@ -55,10 +55,8 @@ var getHappenings = function(req, res) {
     var queryObject = {};
     if (themeId !== undefined) {
         var themeIdObject = new mongoose.Types.ObjectId.fromString(themeId);
-        console.log(themeIdObject);
         queryObject.themes = themeIdObject;
     };
-    console.log(queryObject);
     // TODO: conditionally add $near operator to query object if lat and long are passed in
     Happening.find(queryObject).limit(20).exec(function(err, happenings) {
         var cityIdArray = happenings.map(function(happening){ return happening.location.geonameID});
@@ -91,6 +89,7 @@ var getHappenings = function(req, res) {
     });
 };
 
+// create a new happening
 var postHappening = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
     var searchString = queryParameters.searchstring;
@@ -100,7 +99,6 @@ var postHappening = function(req, res) {
         geonameID = queryParameters.cityid,
         themeId = queryParameters.themeid;
         websiteUrl = queryParameters.websiteurl;
-        console.log(queryParameters);
         // check if url is complete; if not, modify it
         if (websiteUrl.substring(0,7) !== 'http://') {
             websiteUrl = 'http://' + websiteUrl;
@@ -121,6 +119,7 @@ var postHappening = function(req, res) {
         res.send(happening);
 };
 
+// get a single happening at its resource URI
 var getHappening = function(req, res){
     var happeningId = req.params.variable;
     var queryObject = { _id: happeningId };
@@ -129,7 +128,39 @@ var getHappening = function(req, res){
     });
 };
 
+// update a single happening at its resource URI
 var putHappening = function(req, res){
+    var happeningId = req.params.variable;
+    Happening.findById(happeningId, function(err, happening) {
+        var queryParameters = (url.parse(req.url, true).query);
+        if (queryParameters.name !== undefined && queryParameters.name !== '') {
+            happening.dates.name = queryParameters.name;
+        };
+        if (queryParameters.themeid !== undefined && queryParameters.themeid !== '') {
+            happening.themes = [queryParameters.themeid];
+        };
+        if (queryParameters.begindate !== undefined && queryParameters.begindate !== '') {
+            happening.dates.beginDate = queryParameters.begindate;
+        };
+        if (queryParameters.enddate !== undefined && queryParameters.enddate !== '') {
+            happening.dates.endDate = queryParameters.enddate;
+        };
+        if (queryParameters.cityid !== undefined && queryParameters.cityid !== '') {
+            happening.location = { geonameID: queryParameters.cityid };
+        };
+        if (queryParameters.websiteurl !== undefined && queryParameters.websiteurl !== '') {
+            happening.websiteUrl = queryParameters.websiteurl;
+        };
+        happening.save(function(err){
+            if (!err) {
+                res.send(happening);
+            }
+            else {
+                res.send(err);
+            };
+        });
+        
+    });
 };
 
 // define function to be executed when a user tries to search for themes
