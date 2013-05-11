@@ -14,6 +14,8 @@ db.once('open', function callback() {
 // require url for handling querystring parameters
 var url = require('url');
 
+
+// application schemas and models
 var themeSchema = mongoose.Schema({
     name: String,
     nameLowerCase: String,
@@ -43,29 +45,37 @@ var citySchema = mongoose.Schema({
     latitude: Number,
     longitude: Number
 },
+// specify the irregular pluralization of 'city'
 {
-    'collection': 'cities'
+    collection: 'cities'
 });
 
 var City = mongoose.model('City', themeSchema);
 
+
+// get a set of happenings filtered by theme, by location, or by nothing at all
 var getHappenings = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
     var themeId = queryParameters.themeid;
     var queryObject = {};
+    // filter for themes if themeId is passed in
     if (themeId !== undefined) {
         var themeIdObject = new mongoose.Types.ObjectId.fromString(themeId);
         queryObject.themes = themeIdObject;
     };
     // TODO: conditionally add $near operator to query object if lat and long are passed in
     Happening.find(queryObject).limit(20).exec(function(err, happenings) {
+        // create an array of all returned geonameID values
         var cityIdArray = happenings.map(function(happening){ return happening.location.geonameID});
+        // run a query to get the full objects of all the cities that match these geonameID values
         City.find({geonameID: {$in: cityIdArray}}, {geonameID: 1, name: 1, countryCode: 1, latitude: 1, longitude: 1, admin1Code: 1, websiteUrl: 1, _id: 1}).exec(function(err, cities){
+            // create an object so that each full city object is accessible with its geonameID as its key
             var cityObjectArray = {};
             cities.forEach(function(city) {
                 cityObjectArray[city.get('geonameID')] = city;
             });
-            var joinedHappenings = happenings.map(function(happening){
+            // populate the location field in each happening with the joined city data 
+            var cityJoinedHappenings = happenings.map(function(happening){
                 var matchedCity = cityObjectArray[happening.location.geonameID];
                 var newLocation = {};
                 newLocation.cityName = matchedCity.get('name');
@@ -84,7 +94,34 @@ var getHappenings = function(req, res) {
                 newHappening.location = newLocation;
                 return newHappening;
             });
-            res.send(joinedHappenings);
+            // create an array of all returned theme values
+            var themeIdArray = cityJoinedHappenings.map(function(happening){ return happening.themes[0]});
+            // run a query to get the full objects of all the themes that match these theme id values
+            Theme.find({_id: {$in: themeIdArray}}, {name: 1, _id: 1}).exec(function(err, themes){
+                // create an object so that each full city object is accessible with its geonameID as its key
+                var themeObjectArray = {};
+                themes.forEach(function(theme) {
+                    themeObjectArray[theme.get('_id')] = theme;
+                });
+                // populate the location field in each happening with the joined city data 
+                var cityAndThemeJoinedHappenings = cityJoinedHappenings.map(function(happening){
+                    var matchedTheme = themeObjectArray[happening.themes[0]];
+                    var newTheme = {};
+                    newTheme.name = matchedTheme.get('name');
+                    newTheme._id = matchedTheme.get('_id');
+                    var newHappening = {};
+                    newHappening.name = happening.name;
+                    newHappening.dates = happening.dates;
+                    newHappening.themes = happening.themes;
+                    newHappening.websiteUrl = happening.websiteUrl;
+                    newHappening._id = happening._id;
+                    newHappening.location = happening.location;
+                    newHappening.themes = [newTheme];
+                    return newHappening;
+                });
+                // send the result
+                res.send(cityAndThemeJoinedHappenings);
+            });
         });
     });
 };
@@ -92,7 +129,6 @@ var getHappenings = function(req, res) {
 // create a new happening
 var postHappening = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
-    var searchString = queryParameters.searchstring;
     var beginDate = new Date(queryParameters.begindate),
         endDate = new Date(queryParameters.enddate),
         name = queryParameters.name,
@@ -115,6 +151,7 @@ var postHappening = function(req, res) {
             },
             websiteUrl: websiteUrl
         });
+        console.log(happening);
         happening.save();
         res.send(happening);
 };
@@ -151,6 +188,7 @@ var putHappening = function(req, res){
         if (queryParameters.websiteurl !== undefined && queryParameters.websiteurl !== '') {
             happening.websiteUrl = queryParameters.websiteurl;
         };
+        console.log(happening);
         happening.save(function(err){
             if (!err) {
                 res.send(happening);

@@ -17,6 +17,7 @@ var unionMergeObjects = function(objectA, objectB) {
 
 // validity checks for the various types of parameters
 var parameterValidityChecks = {
+    // TODO: add and apply checks for type 'geocoordinate'
     number: function(parameter) {
         if (isNaN(Number(parameter))) {
             return false;
