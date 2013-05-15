@@ -14,6 +14,17 @@ db.once('open', function callback() {
 // require url for handling querystring parameters
 var url = require('url');
 
+// performs a check to see if a target object is a duplicate of one already in the db
+var performDupeCheck = function(queryObject, model, successFunction, failureFunction) {
+    model.find(queryObject).exec(function(err, matches) {
+        if (matches.length === 0) {
+            successFunction();
+        }
+        else {
+            failureFunction();
+        };
+    });
+};
 
 // application schemas and models
 var themeSchema = mongoose.Schema({
@@ -139,21 +150,61 @@ var postHappening = function(req, res) {
         if (websiteUrl.substring(0,7) !== 'http://') {
             websiteUrl = 'http://' + websiteUrl;
         };
-        var happening = new Happening({
-            name: name,
-            themes: [themeId],
-            dates: {
-                beginDate: beginDate,
-                endDate: endDate
-            },
-            location: {
-                geonameID: geonameID
-            },
-            websiteUrl: websiteUrl
-        });
-        console.log(happening);
-        happening.save();
-        res.send(happening);
+        // a happening is a duplicate of another happening if all of the following are true:
+        var queryObject = {
+            // 1) it has the same name as an existing happening
+            'name': name,
+            // 2) it has the same location as an existing happening
+            'location.geonameID': geonameID,
+            // 3) there is any overlap whatsoever between the span of its begin and end dates and the span of the begin and end dates of an existing happening
+            $or: [
+                // check if each existing happening has a beginDate between the beginDate and the endDate of the new happening
+                { 
+                    $and: [
+                        { 'dates.beginDate': { $gte: beginDate } },
+                        { 'dates.beginDate': { $lte: endDate } }
+                    ]
+                },
+               // check if each existing happening has an endDate between the beginDate and the endDate of the new happening
+                { 
+                    $and: [
+                        { 'dates.endDate': { $gte: beginDate } },
+                        { 'dates.endDate': { $lte: endDate } }
+                    ]
+                },
+                // check if the last potential disqualifying condition is true: that the timespan of the new happening is entirely enclosed in the timespan of the existing one
+                { 
+                    $and: [
+                        { 'dates.beginDate': { $lte: beginDate } },
+                        { 'dates.endDate': { $gte: endDate } }
+                    ]
+                }
+            ]
+        };
+        var successFunction = function() {
+            var happening = new Happening({
+                name: name,
+                themes: [themeId],
+                dates: {
+                    beginDate: beginDate,
+                    endDate: endDate
+                },
+                location: {
+                    geonameID: geonameID
+                },
+                websiteUrl: websiteUrl
+            });
+            happening.save();
+            res.send(happening);
+        };
+        var failureFunction = function() {
+            var errorObject = {
+                name: 'resource must be unique',
+                message: 'a resource already exists with those attributes'
+            };
+            res.send(errorObject);
+        };
+        performDupeCheck(queryObject, Happening, successFunction, failureFunction);
 };
 
 // get a single happening at its resource URI
@@ -215,20 +266,22 @@ var getThemes = function(req, res) {
 var postTheme = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
     var name = queryParameters.name;
-    Theme.find({nameLowerCase: name.toLowerCase()}).exec(function(err, nameMatches) {
-        if (nameMatches.length === 0) {
-            var theme = new Theme({'name': name, 'nameLowerCase': name.toLowerCase()});
-            theme.save();
-            res.send(theme);
-        }
-        else {
-            var errorObject = {
-                name: 'resource must be unique',
-                message: 'a resource already exists with that name'
-            };
-            res.send(errorObject);
+    var queryObject = {
+        nameLowerCase: name.toLowerCase()
+    };
+    var successFunction = function() {
+        var theme = new Theme({'name': name, 'nameLowerCase': name.toLowerCase()});
+        theme.save();
+        res.send(theme);
+    };
+    var failureFunction = function() {
+        var errorObject = {
+            name: 'resource must be unique',
+            message: 'a resource already exists with that name'
         };
-    });
+        res.send(errorObject);
+    };
+    performDupeCheck(queryObject, Theme, successFunction, failureFunction);
 };
 
 // define function to be executed when a user tries to search for cities
