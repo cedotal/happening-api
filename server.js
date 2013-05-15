@@ -207,15 +207,23 @@ var postHappening = function(req, res) {
             res.send(errorObject);
         };
         // ensure that events don't end before they begin
-        if (beginDate <= endDate) {
-            performDupeCheck(queryObject, Happening, successFunction, failureFunction);
-        }
-        else {
+        if (endDate < beginDate) {
             var errorObject = {
                 name: 'events can\'t end before they begin',
                 message: 'beginDate must be less than or equal to endDate'
             };
             res.send(errorObject);
+        }
+        // can't create an event in the past
+        else if (beginDate < new Date()) {
+            var errorObject = {
+                name: 'can\'t create past events',
+                message: 'you can\t (yet) create events in the past'
+            };
+            res.send(errorObject);
+        }
+        else {
+            performDupeCheck(queryObject, Happening, successFunction, failureFunction);
         };
 };
 
@@ -223,7 +231,6 @@ var postHappening = function(req, res) {
 var getHappening = function(req, res){
     var happeningId = req.params.variable;
     var queryObject = { _id: happeningId };
-    console.log(queryObject);
     Happening.find(queryObject).exec(function(err, happenings) {
         res.send(happenings);
     });
@@ -308,15 +315,23 @@ var putHappening = function(req, res){
         // ensure that events don't end before they begin
         console.log(happening.beginDate);
         console.log(happening.endDate);
-        if (happening.dates.beginDate <= happening.dates.endDate) {
-            performDupeCheck(queryObject, Happening, successFunction, failureFunction);
-        }
-        else {
+        if (happening.dates.endDate < happening.dates.beginDate) {
             var errorObject = {
                 name: 'events can\'t end before they begin',
                 message: 'beginDate must be less than or equal to endDate'
             };
             res.send(errorObject);
+        }
+        // can't create an event in the past
+        else if (happening.dates.beginDate < new Date()) {
+            var errorObject = {
+                name: 'can\'t create past events',
+                message: 'you can\t (yet) create events in the past'
+            };
+            res.send(errorObject);
+        }
+        else {
+            performDupeCheck(queryObject, Happening, successFunction, failureFunction);
         };
     });
 };
