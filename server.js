@@ -69,6 +69,8 @@ var getHappenings = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
     var themeId = queryParameters.themeid;
     var queryObject = {};
+    // this endpoint should only return future happenings
+    queryObject['dates.endDate'] = { $gte: new Date() };
     // filter for themes if themeId is passed in
     if (themeId !== undefined) {
         var themeIdObject = new mongoose.Types.ObjectId.fromString(themeId);
@@ -221,6 +223,7 @@ var postHappening = function(req, res) {
 var getHappening = function(req, res){
     var happeningId = req.params.variable;
     var queryObject = { _id: happeningId };
+    console.log(queryObject);
     Happening.find(queryObject).exec(function(err, happenings) {
         res.send(happenings);
     });
