@@ -204,7 +204,17 @@ var postHappening = function(req, res) {
             };
             res.send(errorObject);
         };
-        performDupeCheck(queryObject, Happening, successFunction, failureFunction);
+        // ensure that events don't end before they begin
+        if (beginDate <= endDate) {
+            performDupeCheck(queryObject, Happening, successFunction, failureFunction);
+        }
+        else {
+            var errorObject = {
+                name: 'events can\'t end before they begin',
+                message: 'beginDate must be less than or equal to endDate'
+            };
+            res.send(errorObject);
+        };
 };
 
 // get a single happening at its resource URI
@@ -215,14 +225,14 @@ var getHappening = function(req, res){
         res.send(happenings);
     });
 };
-
+//
 // update a single happening at its resource URI
 var putHappening = function(req, res){
     var happeningId = req.params.variable;
     Happening.findById(happeningId, function(err, happening) {
         var queryParameters = (url.parse(req.url, true).query);
         if (queryParameters.name !== undefined && queryParameters.name !== '') {
-            happening.dates.name = queryParameters.name;
+            happening.name = queryParameters.name;
         };
         if (queryParameters.themeid !== undefined && queryParameters.themeid !== '') {
             happening.themes = [queryParameters.themeid];
@@ -237,10 +247,46 @@ var putHappening = function(req, res){
             happening.location = { geonameID: queryParameters.cityid };
         };
         if (queryParameters.websiteurl !== undefined && queryParameters.websiteurl !== '') {
-            happening.websiteUrl = queryParameters.websiteurl;
+            var newUrl = queryParameters.websiteurl;
+            // check if url is complete; if not, modify it
+            if (newUrl.substring(0,7) !== 'http://') {
+                newUrl = 'http://' + newUrl;
+            };
+            happening.websiteUrl = newUrl;
         };
-        console.log(happening);
-        happening.save(function(err){
+        // a happening is a duplicate of another happening if all of the following are true:
+        var queryObject = {
+            // 1) it has the same name as an existing happening
+            'name': happening.name,
+            // 2) it has the same location as an existing happening
+            'location.geonameID': happening.location.geonameID,
+            // 3) there is any overlap whatsoever between the span of its begin and end dates and the span of the begin and end dates of an existing happening
+            $or: [
+                // check if each existing happening has a beginDate between the beginDate and the endDate of the new happening
+                { 
+                    $and: [
+                        { 'dates.beginDate': { $gte: happening.dates.beginDate } },
+                        { 'dates.beginDate': { $lte: happening.dates.endDate } }
+                    ]
+                },
+               // check if each existing happening has an endDate between the beginDate and the endDate of the new happening
+                { 
+                    $and: [
+                        { 'dates.endDate': { $gte: happening.dates.beginDate } },
+                        { 'dates.endDate': { $lte: happening.dates.endDate } }
+                    ]
+                },
+                // check if the last potential disqualifying condition is true: that the timespan of the new happening is entirely enclosed in the timespan of the existing one
+                { 
+                    $and: [
+                        { 'dates.beginDate': { $lte: happening.dates.beginDate } },
+                        { 'dates.endDate': { $gte: happening.dates.endDate } }
+                    ]
+                }
+            ]
+        };
+        var successFunction = function() {
+            happening.save(function(err){
             if (!err) {
                 res.send(happening);
             }
@@ -248,7 +294,27 @@ var putHappening = function(req, res){
                 res.send(err);
             };
         });
-        
+        };
+        var failureFunction = function() {
+            var errorObject = {
+                name: 'resource must be unique',
+                message: 'a resource already exists with those attributes'
+            };
+            res.send(errorObject);
+        };
+        // ensure that events don't end before they begin
+        console.log(happening.beginDate);
+        console.log(happening.endDate);
+        if (happening.dates.beginDate <= happening.dates.endDate) {
+            performDupeCheck(queryObject, Happening, successFunction, failureFunction);
+        }
+        else {
+            var errorObject = {
+                name: 'events can\'t end before they begin',
+                message: 'beginDate must be less than or equal to endDate'
+            };
+            res.send(errorObject);
+        };
     });
 };
 
