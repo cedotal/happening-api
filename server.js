@@ -66,6 +66,7 @@ var City = mongoose.model('City', themeSchema);
 
 // get a set of happenings filtered by theme, by location, or by nothing at all
 var getHappenings = function(req, res) {
+    console.log(req.headers);
     var queryParameters = (url.parse(req.url, true).query);
     var themeId = queryParameters.themeid;
     var queryObject = {};
@@ -218,7 +219,7 @@ var postHappening = function(req, res) {
         else if (beginDate < new Date()) {
             var errorObject = {
                 name: 'can\'t create past events',
-                message: 'you can\t (yet) create events in the past'
+                message: 'you can\'t (yet) create events in the past'
             };
             res.send(errorObject);
         }
@@ -326,7 +327,7 @@ var putHappening = function(req, res){
         else if (happening.dates.beginDate < new Date()) {
             var errorObject = {
                 name: 'can\'t create past events',
-                message: 'you can\t (yet) create events in the past'
+                message: 'you can\'t (yet) create events in the past'
             };
             res.send(errorObject);
         }
