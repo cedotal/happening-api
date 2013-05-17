@@ -66,7 +66,6 @@ var City = mongoose.model('City', themeSchema);
 
 // get a set of happenings filtered by theme, by location, or by nothing at all
 var getHappenings = function(req, res) {
-    console.log(req.headers);
     var queryParameters = (url.parse(req.url, true).query);
     var themeId = queryParameters.themeid;
     var queryObject = {};
@@ -340,6 +339,7 @@ var putHappening = function(req, res){
 // define function to be executed when a user tries to search for themes
 var getThemes = function(req, res) {
     console.log('GET /themes/search is executing');
+    console.log('req.headers: ' + req.headers);
     var queryParameters = (url.parse(req.url, true).query);
     console.log('queryParameters: %j', queryParameters);
     var searchString = queryParameters.searchstring;
