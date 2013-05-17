@@ -339,7 +339,7 @@ var putHappening = function(req, res){
 // define function to be executed when a user tries to search for themes
 var getThemes = function(req, res) {
     console.log('GET /themes/search is executing');
-    console.log('req.headers: ' + req.headers);
+    console.log('req.headers: %j', req.headers);
     var queryParameters = (url.parse(req.url, true).query);
     console.log('queryParameters: %j', queryParameters);
     var searchString = queryParameters.searchstring;
