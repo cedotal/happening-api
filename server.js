@@ -341,8 +341,9 @@ var putHappening = function(req, res){
 var getThemes = function(req, res) {
     console.log('GET /themes/search is executing');
     var queryParameters = (url.parse(req.url, true).query);
-    console.log('queryParameters are: ' + queryParameters);
+    console.log('queryParameters: %j', queryParameters);
     var searchString = queryParameters.searchstring;
+    console.log('searchString' + searchString);
     Theme.find({ 'nameLowerCase': { $regex: '\\A' + searchString.toLowerCase() }}, {'_id': 1, 'name': 1}, function(err, themes) {
         console.log('matching themes: ' + themes);
         // now create the actual response
