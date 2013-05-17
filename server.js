@@ -347,7 +347,7 @@ var getThemes = function(req, res) {
     Theme.find({ 'nameLowerCase': { $regex: '\\A' + searchString.toLowerCase() }}, {'_id': 1, 'name': 1}, function(err, themes) {
         console.log('matching themes: ' + themes);
         // now create the actual response
-        res.send('test response');
+        res.send(themes);
     });
 };
 
