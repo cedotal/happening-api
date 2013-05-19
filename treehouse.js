@@ -54,8 +54,8 @@ var parameterValidityChecks = {
 var setupMethodEndpoint = function(app, prefix, method, methodObject) {
     // a function that wraps the success function for an endpoint in a series of checks that return an error if the request was improperly formed
     var validityCheckWrappingFunction = function(req, res) {
-        // res.set('Access-Control-Allow-Origin', '*');
-        res.set('Access-Control-Allow-Origin', 'http://localhost:3001');
+        res.set('Access-Control-Allow-Origin', '*');
+        // res.set('Access-Control-Allow-Origin', 'http://localhost:3001');
         res.set('Access-Control-Allow-Methods', 'GET, POST');
         res.set('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type');
         var parameterOptions = methodObject[method].parameterOptions;
