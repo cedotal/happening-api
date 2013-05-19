@@ -4,7 +4,7 @@ var app = express();
 
 // require, create, and init mongoose objects
 var mongoose = require('mongoose');
-mongoose.connect('mongodb://localhost/happeningTest');
+mongoose.connect('mongodb://localhost/happening');
 var db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
 db.once('open', function callback() {
