@@ -11,7 +11,7 @@ unzip -o cities.zip
 rm cities.zip
 
 # run the mongo scripts necessary to tear down the old cities collection
-mongo mongoTeardown.js
+mongo mongoCitiesTeardown.js
 
 # sleep the script for 30 seconds while the cities are removed 
 # TODO: make this reliant on a periodic check for whether all cities collections have been removed
@@ -24,4 +24,4 @@ mongoimport --db happening --collection cities --type tsv --file $filename.txt -
 rm $filename.txt
 
 # run the mongo scripts necessary to edit and set up indexes for the new cities collection
-mongo mongoSetup.js
+mongo mongoCitiesSetup.js
