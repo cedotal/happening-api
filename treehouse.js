@@ -56,14 +56,17 @@ var setupMethodEndpoint = function(app, prefix, method, methodObject) {
     var validityCheckWrappingFunction = function(req, res) {
         res.set('Access-Control-Allow-Origin', '*');
         // res.set('Access-Control-Allow-Origin', 'http://localhost:3001');
-        res.set('Access-Control-Allow-Methods', 'GET, POST');
+        res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS, DELETE');
         res.set('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type');
-        var parameterOptions = methodObject[method].parameterOptions;
+        res.set('Access-Control-Max-Age', '0');
+        var parameterOptions = methodObject[method].parameterOptions || {};
         // set up a container for the encoding of any errors encountered in the checking
         var errorArray = [];
         // get query parameters for validity checks
         var queryParameters = (url.parse(req.url, true).query);
         // delete any query parameters that were passed in that are NOT in parameterOptions
+        console.log(queryParameters);
+        console.log(parameterOptions);
         queryParameters = unionMergeObjects(queryParameters, parameterOptions);
         for (var queryParameter in queryParameters) {
             var parameterType = parameterOptions[queryParameter].type;
@@ -130,7 +133,7 @@ var setupMethodEndpoint = function(app, prefix, method, methodObject) {
 var setupRouters = function(app, urlPathTree, prefix) {
     // if the _endpoint attribute is present at this level of the tree, it means we're dealing with an API endpoint
     if (urlPathTree._endpoint) {
-        var validHttpMethods = ['GET', 'PUT', 'POST', 'DELETE'];
+        var validHttpMethods = ['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS'];
         for (method in urlPathTree._endpoint) {
             if (validHttpMethods.indexOf(method) !== -1) {
                 setupMethodEndpoint(app, prefix, method, urlPathTree._endpoint);

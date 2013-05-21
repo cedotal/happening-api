@@ -1,8 +1,6 @@
 // set up Mongo connection
 db = connect("localhost:27017/happening");
 
-print('number of cities that we imported: ' + db.cities.count());
-
 // convert the latitude and longitude attributes into a GeoJSON object of type "point" -- NOTE: longitude comes before latitude in GeoJSON
 db.cities.find().forEach(
     function(city){

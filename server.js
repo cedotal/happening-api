@@ -68,6 +68,8 @@ var City = mongoose.model('City', themeSchema);
 var getHappenings = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
     var themeId = queryParameters.themeid;
+    var latitude = Number(queryParameters.latitude);
+    var longitude = Number (queryParameters.longitude);
     var queryObject = {};
     // this endpoint should only return future happenings
     queryObject['dates.endDate'] = { $gte: new Date() };
@@ -76,12 +78,18 @@ var getHappenings = function(req, res) {
         var themeIdObject = new mongoose.Types.ObjectId.fromString(themeId);
         queryObject.themes = themeIdObject;
     };
-    // TODO: conditionally add $near operator to query object if lat and long are passed in
+    // TODO: sort by distance from chosen location if latitude and longitude are passed in; can't do this unless happenings documents have something in them for $nearSphere to index on; my need an actual attr or may be able to settle for a dbref
+    /* 
+    if (latitude !== undefined && longitude !== undefined) {
+        var locationQuery = { $nearSphere: [longitude, latitude] };
+        queryObject.loc = locationQuery;
+    };
+    */
     Happening.find(queryObject).limit(20).exec(function(err, happenings) {
         // create an array of all returned geonameID values
         var cityIdArray = happenings.map(function(happening){ return happening.location.geonameID});
         // run a query to get the full objects of all the cities that match these geonameID values
-        City.find({geonameID: {$in: cityIdArray}}, {geonameID: 1, name: 1, countryCode: 1, latitude: 1, longitude: 1, admin1Code: 1, websiteUrl: 1, _id: 1}).exec(function(err, cities){
+        City.find({geonameID: {$in: cityIdArray}}, {geonameID: 1, name: 1, countryCode: 1, loc: 1, admin1Code: 1, websiteUrl: 1, _id: 1}).exec(function(err, cities){
             // create an object so that each full city object is accessible with its geonameID as its key
             var cityObjectArray = {};
             cities.forEach(function(city) {
@@ -93,8 +101,8 @@ var getHappenings = function(req, res) {
                 var newLocation = {};
                 newLocation.cityName = matchedCity.get('name');
                 newLocation.cityId = matchedCity.get('geonameID');
-                newLocation.latitude = matchedCity.get('latitude');
-                newLocation.longitude = matchedCity.get('longitude');
+                newLocation.latitude = matchedCity.get('loc').coordinates[1];
+                newLocation.longitude = matchedCity.get('loc').coordinates[0];
                 newLocation.countryCode = matchedCity.get('countryCode');
                 newLocation.admin1Code = matchedCity.get('admin1Code');
                 happening.set({'location': true});
@@ -293,7 +301,9 @@ var putHappening = function(req, res){
                         { 'dates.endDate': { $gte: happening.dates.endDate } }
                     ]
                 }
-            ]
+            ],
+            // since we're PUTTING to and existing resource and not POSTING a new one, we also have to make sure that the resource we're matching for dupes is not, in fact, the one being targeted
+            _id: { $ne: happeningId }
         };
         var successFunction = function() {
             happening.save(function(err){
@@ -313,8 +323,6 @@ var putHappening = function(req, res){
             res.send(errorObject);
         };
         // ensure that events don't end before they begin
-        console.log(happening.beginDate);
-        console.log(happening.endDate);
         if (happening.dates.endDate < happening.dates.beginDate) {
             var errorObject = {
                 name: 'events can\'t end before they begin',
@@ -323,7 +331,7 @@ var putHappening = function(req, res){
             res.send(errorObject);
         }
         // can't create an event in the past
-        else if (happening.dates.beginDate < new Date()) {
+        else if (happening.dates.endDate < new Date()) {
             var errorObject = {
                 name: 'can\'t create past events',
                 message: 'you can\'t (yet) create events in the past'
@@ -338,14 +346,9 @@ var putHappening = function(req, res){
 
 // define function to be executed when a user tries to search for themes
 var getThemes = function(req, res) {
-    console.log('GET /themes/search is executing');
-    console.log('req.headers: %j', req.headers);
     var queryParameters = (url.parse(req.url, true).query);
-    console.log('queryParameters: %j', queryParameters);
     var searchString = queryParameters.searchstring;
-    console.log('searchString: ' + searchString);
     Theme.find({ 'nameLowerCase': { $regex: '\\A' + searchString.toLowerCase() }}, {'_id': 1, 'name': 1}, function(err, themes) {
-        console.log('matching themes: ' + themes);
         // now create the actual response
         res.send(themes);
     });
@@ -373,13 +376,28 @@ var postTheme = function(req, res) {
     performDupeCheck(queryObject, Theme, successFunction, failureFunction);
 };
 
+
+// TODO: fix the fact that removing latitude and longitude from cities in db and replaced them with loc broke some stuff; at the very least broke the ability of happenings to join properly and return coordinate data for their embedded city by geonameID
 // define function to be executed when a user tries to search for cities
 var getCities = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
     var searchString = queryParameters.searchstring;
-    City.find({ 'nameLowerCase': { $regex: '\\A' + searchString.toLowerCase() }}, {'_id': 0, 'name': 1, 'latitude': 1, 'longitude': 1, 'countryCode': 1, 'geonameID': 1 }).limit(8).sort({population: -1}).exec( function(err, cities) {
+    var projectionObject = {
+        '_id': 0,
+        'name': 1,
+        'loc': 1,
+        'countryCode': 1,
+        'geonameID': 1,
+        'admin1Code': 1
+    };
+    City.find({ 'nameLowerCase': { $regex: '\\A' + searchString.toLowerCase() }}, projectionObject).limit(8).sort({population: -1}).exec( function(err, cities) {
         res.send(cities);
     });
+};
+
+// sends back a preflight response (for OPTIONS/CORS)
+var preflightResponse = function(req, res) {
+    res.send('your preflight request is approved');
 };
 
 // set up tree for parsing request Urls
@@ -454,6 +472,9 @@ var urlPathTree = {
                             type: 'url'
                         }
                     }
+                },
+                OPTIONS: {
+                    method: preflightResponse
                 }
             }
         }
