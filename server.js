@@ -376,8 +376,6 @@ var postTheme = function(req, res) {
     performDupeCheck(queryObject, Theme, successFunction, failureFunction);
 };
 
-
-// TODO: fix the fact that removing latitude and longitude from cities in db and replaced them with loc broke some stuff; at the very least broke the ability of happenings to join properly and return coordinate data for their embedded city by geonameID
 // define function to be executed when a user tries to search for cities
 var getCities = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);

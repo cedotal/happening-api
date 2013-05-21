@@ -21,5 +21,12 @@ db.cities.find().forEach(
 // drop all indices before creating new ones
 db.cities.dropIndex("*");
 
-// create 2dsphere index on cities
-db.cities.ensureIndex({loc: "2dsphere"});
+// create GET /cities/search index
+db.cities.ensureIndex({
+    'nameLowerCase': 1,
+    'name': 1,
+    'loc': 1,
+    'countryCode': 1,
+    'geonameID': 1,
+    'admin1Code': 1
+});
