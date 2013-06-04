@@ -39,7 +39,23 @@ var parameterValidityChecks = {
     },
     mongoObjectId: function(parameter) {
         var objectIdRegExp = new RegExp("^[0-9a-fA-F]{24}$");
-        return objectIdRegExp.test(parameter);
+        // check for presence of a comma; if there is one, we're dealing with multiple _ids
+        if (parameter.indexOf(',') === -1) { 
+            var validity = objectIdRegExp.test(parameter);
+        }
+        else {
+            var parameterArray = parameter.split(',');
+            parameterArray = parameterArray.map(function(singleParameter) {
+                return objectIdRegExp.test(singleParameter)
+            });
+            if (parameterArray.indexOf(true) !== -1) {
+                var validity = true;
+            }
+            else {
+                var validity = false;
+            };
+        };
+        return validity;
     },
     url: function(parameter) {
         var urlValidity = false;
