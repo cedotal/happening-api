@@ -65,8 +65,6 @@ var setupMethodEndpoint = function(app, prefix, method, methodObject) {
         // get query parameters for validity checks
         var queryParameters = (url.parse(req.url, true).query);
         // delete any query parameters that were passed in that are NOT in parameterOptions
-        console.log(queryParameters);
-        console.log(parameterOptions);
         queryParameters = unionMergeObjects(queryParameters, parameterOptions);
         for (var queryParameter in queryParameters) {
             var parameterType = parameterOptions[queryParameter].type;

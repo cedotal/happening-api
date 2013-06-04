@@ -30,7 +30,6 @@ var performDupeCheck = function(queryObject, model, successFunction, failureFunc
 var themeSchema = mongoose.Schema({
     name: String,
     nameLowerCase: String,
-    id: Number
 });
 
 var Theme = mongoose.model('Theme', themeSchema);
@@ -38,7 +37,10 @@ var Theme = mongoose.model('Theme', themeSchema);
 var happeningSchema = mongoose.Schema({
     name: String,
     id: Number,
-    themes: [mongoose.Schema.ObjectId],
+    themes: [{
+        ref: 'Theme',
+        type: mongoose.Schema.Types.ObjectId
+    }],
     dates: {
         beginDate: Date,
         endDate: Date
@@ -63,7 +65,6 @@ var citySchema = mongoose.Schema({
 
 var City = mongoose.model('City', themeSchema);
 
-
 // get a set of happenings filtered by theme, by location, or by nothing at all
 var getHappenings = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
@@ -85,7 +86,7 @@ var getHappenings = function(req, res) {
         queryObject.loc = locationQuery;
     };
     */
-    Happening.find(queryObject).limit(20).exec(function(err, happenings) {
+    Happening.find(queryObject).limit(20).populate('themes').exec(function(err, happenings) {
         // create an array of all returned geonameID values
         var cityIdArray = happenings.map(function(happening){ return happening.location.geonameID});
         // run a query to get the full objects of all the cities that match these geonameID values
@@ -115,34 +116,8 @@ var getHappenings = function(req, res) {
                 newHappening.location = newLocation;
                 return newHappening;
             });
-            // create an array of all returned theme values
-            var themeIdArray = cityJoinedHappenings.map(function(happening){ return happening.themes[0]});
-            // run a query to get the full objects of all the themes that match these theme id values
-            Theme.find({_id: {$in: themeIdArray}}, {name: 1, _id: 1}).exec(function(err, themes){
-                // create an object so that each full city object is accessible with its geonameID as its key
-                var themeObjectArray = {};
-                themes.forEach(function(theme) {
-                    themeObjectArray[theme.get('_id')] = theme;
-                });
-                // populate the location field in each happening with the joined city data 
-                var cityAndThemeJoinedHappenings = cityJoinedHappenings.map(function(happening){
-                    var matchedTheme = themeObjectArray[happening.themes[0]];
-                    var newTheme = {};
-                    newTheme.name = matchedTheme.get('name');
-                    newTheme._id = matchedTheme.get('_id');
-                    var newHappening = {};
-                    newHappening.name = happening.name;
-                    newHappening.dates = happening.dates;
-                    newHappening.themes = happening.themes;
-                    newHappening.websiteUrl = happening.websiteUrl;
-                    newHappening._id = happening._id;
-                    newHappening.location = happening.location;
-                    newHappening.themes = [newTheme];
-                    return newHappening;
-                });
-                // send the result
-                res.send(cityAndThemeJoinedHappenings);
-            });
+            // send the result
+            res.send(cityJoinedHappenings);
         });
     });
 };
@@ -192,9 +167,10 @@ var postHappening = function(req, res) {
             ]
         };
         var successFunction = function() {
+            var themeIdArray = themeId.split(',');
             var happening = new Happening({
                 name: name,
-                themes: [themeId],
+                themes: themeIdArray,
                 dates: {
                     beginDate: beginDate,
                     endDate: endDate
@@ -243,7 +219,7 @@ var getHappening = function(req, res){
         res.send(happenings);
     });
 };
-//
+
 // update a single happening at its resource URI
 var putHappening = function(req, res){
     var happeningId = req.params.variable;
@@ -253,7 +229,8 @@ var putHappening = function(req, res){
             happening.name = queryParameters.name;
         };
         if (queryParameters.themeid !== undefined && queryParameters.themeid !== '') {
-            happening.themes = [queryParameters.themeid];
+            var themeIdArray = queryParameters.themeid.split(',');
+            happening.themes = themeIdArray;
         };
         if (queryParameters.begindate !== undefined && queryParameters.begindate !== '') {
             happening.dates.beginDate = queryParameters.begindate;
