@@ -79,13 +79,12 @@ var getHappenings = function(req, res) {
         var themeIdObject = new mongoose.Types.ObjectId.fromString(themeId);
         queryObject.themes = themeIdObject;
     };
-    // TODO: sort by distance from chosen location if latitude and longitude are passed in; can't do this unless happenings documents have something in them for $nearSphere to index on; my need an actual attr or may be able to settle for a dbref
-    /* 
-    if (latitude !== undefined && longitude !== undefined) {
+    // sort by distance from chosen location if latitude and longitude are passed in
+    if (!isNaN(latitude) && !isNaN(longitude)) {
         var locationQuery = { $nearSphere: [longitude, latitude] };
-        queryObject.loc = locationQuery;
+        queryObject["location.loc"] = locationQuery;
     };
-    */
+    console.log(queryObject);
     Happening.find(queryObject).limit(20).populate('themes').exec(function(err, happenings) {
         // create an array of all returned geonameID values
         var cityIdArray = happenings.map(function(happening){ return happening.location.geonameID});
