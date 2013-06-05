@@ -2,7 +2,10 @@
 var db = connect("localhost:27017/happening");
 
 // create GET /happenings index on themes
-// TODO
+db.happenings.ensureIndex({
+    themes: 1,
+    "location.loc": "2dsphere"
+});
 
 // create GET /happening index on themes
 // TODO
@@ -13,3 +16,4 @@ db.themes.ensureIndex({
     name: 1,
     _id: 1
 });
+
