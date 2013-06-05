@@ -46,7 +46,8 @@ var happeningSchema = mongoose.Schema({
         endDate: Date
     },
     location: {
-        geonameID: Number
+        geonameID: Number,
+        loc: {}
     },
     websiteUrl: String
 });
@@ -84,7 +85,6 @@ var getHappenings = function(req, res) {
         var locationQuery = { $nearSphere: [longitude, latitude] };
         queryObject["location.loc"] = locationQuery;
     };
-    console.log(queryObject);
     Happening.find(queryObject).limit(20).populate('themes').exec(function(err, happenings) {
         // create an array of all returned geonameID values
         var cityIdArray = happenings.map(function(happening){ return happening.location.geonameID});
@@ -127,7 +127,7 @@ var postHappening = function(req, res) {
     var beginDate = new Date(queryParameters.begindate),
         endDate = new Date(queryParameters.enddate),
         name = queryParameters.name,
-        geonameID = queryParameters.cityid,
+        geonameID = Number(queryParameters.cityid),
         themeId = queryParameters.themeid;
         websiteUrl = queryParameters.websiteurl;
         // check if url is complete; if not, modify it
@@ -167,20 +167,32 @@ var postHappening = function(req, res) {
         };
         var successFunction = function() {
             var themeIdArray = themeId.split(',');
-            var happening = new Happening({
-                name: name,
-                themes: themeIdArray,
-                dates: {
-                    beginDate: beginDate,
-                    endDate: endDate
-                },
-                location: {
-                    geonameID: geonameID
-                },
-                websiteUrl: websiteUrl
+            City.find({geonameID: geonameID}, {loc: 1}).exec(function(err, cityResult) {
+                console.log(geonameID);
+                console.log(cityResult[0].get('loc'));
+                var happening = new Happening({
+                    name: name,
+                    themes: themeIdArray,
+                    dates: {
+                        beginDate: beginDate,
+                        endDate: endDate
+                    },
+                    location: {
+                        geonameID: geonameID,
+                        loc: {
+                            type: 'Point',
+                            coordinates: [
+                                Number(cityResult[0].get('loc').coordinates[0]),
+                                Number(cityResult[0].get('loc').coordinates[1])
+                            ]
+                        }
+                    },
+                    websiteUrl: websiteUrl
+                });
+                console.log(happening);
+                happening.save();
+                res.send(happening);
             });
-            happening.save();
-            res.send(happening);
         };
         var failureFunction = function() {
             var errorObject = {
@@ -281,15 +293,54 @@ var putHappening = function(req, res){
             // since we're PUTTING to and existing resource and not POSTING a new one, we also have to make sure that the resource we're matching for dupes is not, in fact, the one being targeted
             _id: { $ne: happeningId }
         };
+        /*
         var successFunction = function() {
-            happening.save(function(err){
-            if (!err) {
+            var themeIdArray = themeId.split(',');
+            City.find({geonameID: geonameID}, {loc: 1}).exec(function(err, cityResult) {
+                var happening = new Happening({
+                    name: name,
+                    themes: themeIdArray,
+                    dates: {
+                        beginDate: beginDate,
+                        endDate: endDate
+                    },
+                    location: {
+                        geonameID: geonameID,
+                        loc: {
+                            type: 'Point',
+                            coordinates: [
+                                Number(cityResult[0].get('loc').coordinates[0]),
+                                Number(cityResult[0].get('loc').coordinates[1])
+                            ]
+                        }
+                    },
+                    websiteUrl: websiteUrl
+                });
+                console.log(happening);
+                happening.save();
                 res.send(happening);
-            }
-            else {
-                res.send(err);
-            };
-        });
+            });
+        };
+        */
+        
+        var successFunction = function() {
+            City.find({geonameID: happening.location.geonameID}, {loc: 1}).exec(function(err, cityResult) {
+                happening.location.loc = {
+                    type: 'Point',
+                    coordinates: [
+                        Number(cityResult[0].get('loc').coordinates[0]),
+                        Number(cityResult[0].get('loc').coordinates[1])
+                    ]
+                };
+                happening.save(function(err){
+                    if (!err) {
+                        res.send(happening);
+                    }
+                    else {
+                        res.send(err);
+                    };
+                });
+            });
         };
         var failureFunction = function() {
             var errorObject = {
