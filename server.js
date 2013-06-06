@@ -293,36 +293,6 @@ var putHappening = function(req, res){
             // since we're PUTTING to and existing resource and not POSTING a new one, we also have to make sure that the resource we're matching for dupes is not, in fact, the one being targeted
             _id: { $ne: happeningId }
         };
-        /*
-        var successFunction = function() {
-            var themeIdArray = themeId.split(',');
-            City.find({geonameID: geonameID}, {loc: 1}).exec(function(err, cityResult) {
-                var happening = new Happening({
-                    name: name,
-                    themes: themeIdArray,
-                    dates: {
-                        beginDate: beginDate,
-                        endDate: endDate
-                    },
-                    location: {
-                        geonameID: geonameID,
-                        loc: {
-                            type: 'Point',
-                            coordinates: [
-                                Number(cityResult[0].get('loc').coordinates[0]),
-                                Number(cityResult[0].get('loc').coordinates[1])
-                            ]
-                        }
-                    },
-                    websiteUrl: websiteUrl
-                });
-                console.log(happening);
-                happening.save();
-                res.send(happening);
-            });
-        };
-        */
-        
         var successFunction = function() {
             City.find({geonameID: happening.location.geonameID}, {loc: 1}).exec(function(err, cityResult) {
                 happening.location.loc = {
@@ -435,7 +405,10 @@ var urlPathTree = {
                     themeid: {
                         type: 'mongoObjectId'
                     },
-                    cityid: {
+                    latitude: {
+                        type: 'number'
+                    },
+                    longitude: {
                         type: 'number'
                     }
                 }

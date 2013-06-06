@@ -48,7 +48,7 @@ var parameterValidityChecks = {
             parameterArray = parameterArray.map(function(singleParameter) {
                 return objectIdRegExp.test(singleParameter)
             });
-            if (parameterArray.indexOf(true) !== -1) {
+            if (parameterArray.indexOf(false) === -1) {
                 var validity = true;
             }
             else {
