@@ -14,8 +14,19 @@ db.once('open', function callback() {
 // require url for handling querystring parameters
 var url = require('url');
 
+// remove duplicate values from an array
+function deDuplicateArray(array) {
+    var newArray = [];
+    array.forEach(function(member){
+       if (newArray.indexOf(member) === -1) {
+           newArray.push(member);
+       };
+   });
+   return newArray;
+};
+
 // performs a check to see if a target object is a duplicate of one already in the db
-var performDupeCheck = function(queryObject, model, successFunction, failureFunction) {
+var performDatabaseDupeCheck = function(queryObject, model, successFunction, failureFunction) {
     model.find(queryObject).exec(function(err, matches) {
         if (matches.length === 0) {
             successFunction();
@@ -27,20 +38,10 @@ var performDupeCheck = function(queryObject, model, successFunction, failureFunc
 };
 
 // application schemas and models
-var themeSchema = mongoose.Schema({
-    name: String,
-    nameLowerCase: String,
-});
-
-var Theme = mongoose.model('Theme', themeSchema);
-
 var happeningSchema = mongoose.Schema({
     name: String,
     id: Number,
-    themes: [{
-        ref: 'Theme',
-        type: mongoose.Schema.Types.ObjectId
-    }],
+    tags: [String],
     dates: {
         beginDate: Date,
         endDate: Date
@@ -64,28 +65,27 @@ var citySchema = mongoose.Schema({
     collection: 'cities'
 });
 
-var City = mongoose.model('City', themeSchema);
+var City = mongoose.model('City', citySchema);
 
-// get a set of happenings filtered by theme, by location, or by nothing at all
+// get a set of happenings filtered by tag, by location, or by nothing at all
 var getHappenings = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
-    var themeId = queryParameters.themeid;
+    var tags = queryParameters.tags;
     var latitude = Number(queryParameters.latitude);
     var longitude = Number (queryParameters.longitude);
     var queryObject = {};
     // this endpoint should only return future happenings
     queryObject['dates.endDate'] = { $gte: new Date() };
-    // filter for themes if themeId is passed in
-    if (themeId !== undefined) {
-        var themeIdObject = new mongoose.Types.ObjectId.fromString(themeId);
-        queryObject.themes = themeIdObject;
+    // filter for tags if tags is passed in
+    if (tags !== undefined) {
+        queryObject.tags = tags;
     };
     // sort by distance from chosen location if latitude and longitude are passed in
     if (!isNaN(latitude) && !isNaN(longitude)) {
         var locationQuery = { $nearSphere: [longitude, latitude] };
         queryObject["location.loc"] = locationQuery;
     };
-    Happening.find(queryObject).limit(20).populate('themes').exec(function(err, happenings) {
+    Happening.find(queryObject).limit(20).exec(function(err, happenings) {
         // create an array of all returned geonameID values
         var cityIdArray = happenings.map(function(happening){ return happening.location.geonameID});
         // run a query to get the full objects of all the cities that match these geonameID values
@@ -109,7 +109,7 @@ var getHappenings = function(req, res) {
                 var newHappening = {};
                 newHappening.name = happening.get('name');
                 newHappening.dates = happening.get('dates');
-                newHappening.themes = happening.get('themes');
+                newHappening.tags = happening.get('tags');
                 newHappening.websiteUrl = happening.get('websiteUrl');
                 newHappening._id = happening.get('_id');
                 newHappening.location = newLocation;
@@ -128,8 +128,18 @@ var postHappening = function(req, res) {
         endDate = new Date(queryParameters.enddate),
         name = queryParameters.name,
         geonameID = Number(queryParameters.cityid),
-        themeId = queryParameters.themeid;
-        websiteUrl = queryParameters.websiteurl;
+        websiteUrl = queryParameters.websiteurl,
+        tags = queryParameters.tags;
+        // prevent users from adding a tag labelled as an empty string by beginning or ending a label name with a comma
+        if (tags[0] === ',') {
+            tags = tags.slice(1);
+        };
+        if (tags[tags.length - 1] === ',') {
+            tags = tags.slice(0, tags.length - 1);
+        };
+        // turn the tags string into an array
+        tags = queryParameters.tags.split(',');
+        tags = deDuplicateArray(tags);
         // check if url is complete; if not, modify it
         if (websiteUrl.substring(0,7) !== 'http://') {
             websiteUrl = 'http://' + websiteUrl;
@@ -166,13 +176,10 @@ var postHappening = function(req, res) {
             ]
         };
         var successFunction = function() {
-            var themeIdArray = themeId.split(',');
             City.find({geonameID: geonameID}, {loc: 1}).exec(function(err, cityResult) {
-                console.log(geonameID);
-                console.log(cityResult[0].get('loc'));
                 var happening = new Happening({
                     name: name,
-                    themes: themeIdArray,
+                    tags: tags,
                     dates: {
                         beginDate: beginDate,
                         endDate: endDate
@@ -218,7 +225,7 @@ var postHappening = function(req, res) {
             res.send(errorObject);
         }
         else {
-            performDupeCheck(queryObject, Happening, successFunction, failureFunction);
+            performDatabaseDupeCheck(queryObject, Happening, successFunction, failureFunction);
         };
 };
 
@@ -239,9 +246,10 @@ var putHappening = function(req, res){
         if (queryParameters.name !== undefined && queryParameters.name !== '') {
             happening.name = queryParameters.name;
         };
-        if (queryParameters.themeid !== undefined && queryParameters.themeid !== '') {
-            var themeIdArray = queryParameters.themeid.split(',');
-            happening.themes = themeIdArray;
+        if (queryParameters.tags !== undefined && queryParameters.tags !== '') {
+            var tags = queryParameters.tags.split(',');
+            tags = deDuplicateArray(tags);
+            happening.tags = tags;
         };
         if (queryParameters.begindate !== undefined && queryParameters.begindate !== '') {
             happening.dates.beginDate = queryParameters.begindate;
@@ -336,41 +344,34 @@ var putHappening = function(req, res){
             res.send(errorObject);
         }
         else {
-            performDupeCheck(queryObject, Happening, successFunction, failureFunction);
+            performDatabaseDupeCheck(queryObject, Happening, successFunction, failureFunction);
         };
     });
 };
 
-// define function to be executed when a user tries to search for themes
-var getThemes = function(req, res) {
+// function to be executed when a user tries to search for tags
+var getTags = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
     var searchString = queryParameters.searchstring;
-    Theme.find({ 'nameLowerCase': { $regex: '\\A' + searchString.toLowerCase() }}, {'_id': 1, 'name': 1}, function(err, themes) {
+    Happening.find({}, function(err, happenings) {
+        var tags = [];
+        happenings.forEach(function(happening){
+            happening.get('tags').forEach(function(tag){
+                tags.push(tag);
+            });
+        });
+        tags = deDuplicateArray(tags);
+        tags = tags.filter(function(tag){
+            if (tag.slice(0, searchString.length) === searchString) {
+                return true;
+            }
+            else {
+                return false;
+            };
+        });
         // now create the actual response
-        res.send(themes);
+        res.send(tags);
     });
-};
-
-// define function to be executed when a user tries to post a new theme
-var postTheme = function(req, res) {
-    var queryParameters = (url.parse(req.url, true).query);
-    var name = queryParameters.name;
-    var queryObject = {
-        nameLowerCase: name.toLowerCase()
-    };
-    var successFunction = function() {
-        var theme = new Theme({'name': name, 'nameLowerCase': name.toLowerCase()});
-        theme.save();
-        res.send(theme);
-    };
-    var failureFunction = function() {
-        var errorObject = {
-            name: 'resource must be unique',
-            message: 'a resource already exists with that name'
-        };
-        res.send(errorObject);
-    };
-    performDupeCheck(queryObject, Theme, successFunction, failureFunction);
 };
 
 // define function to be executed when a user tries to search for cities
@@ -402,8 +403,8 @@ var urlPathTree = {
             GET: {
                 method: getHappenings,
                 parameterOptions: {
-                    themeid: {
-                        type: 'mongoObjectId'
+                    tags: {
+                        type: 'string'
                     },
                     latitude: {
                         type: 'number'
@@ -432,8 +433,8 @@ var urlPathTree = {
                         type: 'number',
                         required: true
                     },
-                    themeid: {
-                        type: 'mongoObjectId',
+                    tags: {
+                        type: 'string',
                         required: true
                     },
                     websiteurl: {
@@ -463,8 +464,8 @@ var urlPathTree = {
                         cityid: {
                             type: 'number'
                         },
-                        themeid: {
-                            type: 'mongoObjectId'
+                        tags: {
+                            type: 'string'
                         },
                         websiteurl: {
                             type: 'url'
@@ -477,22 +478,11 @@ var urlPathTree = {
             }
         }
     },
-    themes: {
-        _endpoint: {
-            POST: {
-                method: postTheme,
-                parameterOptions: {
-                    name: {
-                        type: 'string',
-                        required: true
-                    }
-                }
-            }
-        },
+    tags: {
         search: {
             _endpoint: {
                 GET: {
-                    method: getThemes,
+                    method: getTags,
                     parameterOptions: {
                         searchstring: {
                             type: 'string',
