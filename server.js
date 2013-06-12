@@ -129,7 +129,7 @@ var postHappening = function(req, res) {
         name = queryParameters.name,
         geonameID = Number(queryParameters.cityid),
         websiteUrl = queryParameters.websiteurl,
-        tags = queryParameters.tags;
+        tags = queryParameters.tags.toLowerCase();
         // prevent users from adding a tag labelled as an empty string by beginning or ending a label name with a comma
         if (tags[0] === ',') {
             tags = tags.slice(1);
@@ -247,7 +247,9 @@ var putHappening = function(req, res){
             happening.name = queryParameters.name;
         };
         if (queryParameters.tags !== undefined && queryParameters.tags !== '') {
-            var tags = queryParameters.tags.split(',');
+            var tags = queryParameters.tags;
+            tags = tags.toLowerCase();
+            tags = tags.split(',');
             tags = deDuplicateArray(tags);
             happening.tags = tags;
         };
@@ -352,7 +354,7 @@ var putHappening = function(req, res){
 // function to be executed when a user tries to search for tags
 var getTags = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
-    var searchString = queryParameters.searchstring;
+    var searchString = queryParameters.searchstring.toLowerCase();
     Happening.find({}, function(err, happenings) {
         var tags = [];
         happenings.forEach(function(happening){
