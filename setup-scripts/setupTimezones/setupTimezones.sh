@@ -3,11 +3,11 @@
 # get the file
 wget -r -O timeZones.txt http://download.geonames.org/export/dump/timeZones.txt
 
-# run the mongo scripts necessary to tear down the old cities collection
+# run the mongo scripts necessary to tear down the old timezones collection
 mongo mongoTimezonesTeardown.js
 
-# sleep the script for 30 seconds while the cities are removed 
-# TODO: make this reliant on a periodic check for whether all cities collections have been removed
+# sleep the script for 5 seconds while the timezones are removed 
+# TODO: make this reliant on a periodic check for whether all timezones collections have been removed
 sleep 5
 
 # import the TSV file into MongoDB

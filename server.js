@@ -72,24 +72,32 @@ var getHappenings = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
     var tags = queryParameters.tags;
     var latitude = Number(queryParameters.latitude);
-    var longitude = Number (queryParameters.longitude);
+    var longitude = Number(queryParameters.longitude);
+    var sortByValue = queryParameters.sortby;
     var queryObject = {};
+    var sortQueryObject = {};
+    // canonical sortby values are 'location' and 'date'; in the event of an invalid or no sortby value, or if other parameters dependent on that sort are not passed, default to a sort by date
+    if (sortByValue === 'location' && !isNaN(latitude) && !isNaN(longitude)) {
+        // sort by distance from chosen location if latitude and longitude are passed in
+        var locationQuery = { $nearSphere: [longitude, latitude] };
+            queryObject["location.loc"] = locationQuery;
+    }
+    else {
+        sortQueryObject = {
+            'dates.beginDate': 1
+        };
+    };
     // this endpoint should only return future happenings
     queryObject['dates.endDate'] = { $gte: new Date() };
     // filter for tags if tags is passed in
     if (tags !== undefined) {
         queryObject.tags = tags;
     };
-    // sort by distance from chosen location if latitude and longitude are passed in
-    if (!isNaN(latitude) && !isNaN(longitude)) {
-        var locationQuery = { $nearSphere: [longitude, latitude] };
-        queryObject["location.loc"] = locationQuery;
-    };
-    Happening.find(queryObject).limit(20).exec(function(err, happenings) {
+    Happening.find(queryObject).limit(20).sort(sortQueryObject).exec(function(err, happenings) {
         // create an array of all returned geonameID values
         var cityIdArray = happenings.map(function(happening){ return happening.location.geonameID});
         // run a query to get the full objects of all the cities that match these geonameID values
-        City.find({geonameID: {$in: cityIdArray}}, {geonameID: 1, name: 1, countryCode: 1, loc: 1, admin1Code: 1, websiteUrl: 1, _id: 1}).exec(function(err, cities){
+        City.find({geonameID: {$in: cityIdArray}}, {geonameID: 1, name: 1, countryCode: 1, loc: 1, admin1Code: 1, websiteUrl: 1, timezone:1, _id: 1}).exec(function(err, cities){
             // create an object so that each full city object is accessible with its geonameID as its key
             var cityObjectArray = {};
             cities.forEach(function(city) {
@@ -105,6 +113,7 @@ var getHappenings = function(req, res) {
                 newLocation.longitude = matchedCity.get('loc').coordinates[0];
                 newLocation.countryCode = matchedCity.get('countryCode');
                 newLocation.admin1Code = matchedCity.get('admin1Code');
+                newLocation.timezone = matchedCity.get('timezone');
                 happening.set({'location': true});
                 var newHappening = {};
                 newHappening.name = happening.get('name');
@@ -253,11 +262,13 @@ var putHappening = function(req, res){
             tags = deDuplicateArray(tags);
             happening.tags = tags;
         };
+        // dates passed in from client application are in UTC, but we need to append ' UTC' so that the server stores them as the appropriate UTC date, rather than adding an additional offset for the server's local time
+        // TODO: this is brittle
         if (queryParameters.begindate !== undefined && queryParameters.begindate !== '') {
-            happening.dates.beginDate = queryParameters.begindate;
+            happening.dates.beginDate = new Date(queryParameters.begindate + ' UTC');
         };
         if (queryParameters.enddate !== undefined && queryParameters.enddate !== '') {
-            happening.dates.endDate = queryParameters.enddate;
+            happening.dates.endDate = new Date(queryParameters.enddate + ' UTC');
         };
         if (queryParameters.cityid !== undefined && queryParameters.cityid !== '') {
             happening.location = { geonameID: queryParameters.cityid };
@@ -386,7 +397,8 @@ var getCities = function(req, res) {
         'loc': 1,
         'countryCode': 1,
         'geonameID': 1,
-        'admin1Code': 1
+        'admin1Code': 1,
+        'timezone': 1
     };
     City.find({ 'nameLowerCase': { $regex: '\\A' + searchString.toLowerCase() }}, projectionObject).limit(8).sort({population: -1}).exec( function(err, cities) {
         res.send(cities);
