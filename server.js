@@ -73,11 +73,10 @@ var getHappenings = function(req, res) {
     var tags = queryParameters.tags;
     var latitude = Number(queryParameters.latitude);
     var longitude = Number(queryParameters.longitude);
-    var sortByValue = queryParameters.sortby;
     var queryObject = {};
     var sortQueryObject = {};
-    // canonical sortby values are 'location' and 'date'; in the event of an invalid or no sortby value, or if other parameters dependent on that sort are not passed, default to a sort by date
-    if (sortByValue === 'location' && !isNaN(latitude) && !isNaN(longitude)) {
+    // canonical comparators are location and date; if server is given a valid location, we sort by location; if not, we sort by date
+    if (!isNaN(latitude) && !isNaN(longitude)) {
         // sort by distance from chosen location if latitude and longitude are passed in
         var locationQuery = { $nearSphere: [longitude, latitude] };
             queryObject["location.loc"] = locationQuery;
@@ -97,7 +96,8 @@ var getHappenings = function(req, res) {
         // create an array of all returned geonameID values
         var cityIdArray = happenings.map(function(happening){ return happening.location.geonameID});
         // run a query to get the full objects of all the cities that match these geonameID values
-        City.find({geonameID: {$in: cityIdArray}}, {geonameID: 1, name: 1, countryCode: 1, loc: 1, admin1Code: 1, websiteUrl: 1, timezone:1, _id: 1}).exec(function(err, cities){
+        var projectionObject = {geonameID: 1, name: 1, countryCode: 1, loc: 1, admin1Code: 1, websiteUrl: 1, timezone:1, _id: 1};
+        City.find({geonameID: {$in: cityIdArray}}, projectionObject).exec(function(err, cities){
             // create an object so that each full city object is accessible with its geonameID as its key
             var cityObjectArray = {};
             cities.forEach(function(city) {
