@@ -8,10 +8,10 @@ mongoose.connect('mongodb://localhost/happening');
 var db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
 db.once('open', function callback() {
-    // yay
+    // nothing in the callback
 });
 
-// require url for handling querystring parameters
+// require url lib for handling querystring parameters
 var url = require('url');
 
 // remove duplicate values from an array
@@ -57,8 +57,11 @@ var Happening = mongoose.model('Happening', happeningSchema);
 
 var citySchema = mongoose.Schema({
     name: String,
-    latitude: Number,
-    longitude: Number
+    loc: {},
+    countryCode: String,
+    geonameID: Number,
+    admin1Code: String,
+    timezone: String
 },
 // specify the irregular pluralization of 'city'
 {
@@ -75,7 +78,7 @@ var getHappenings = function(req, res) {
     var longitude = Number(queryParameters.longitude);
     var queryObject = {};
     var sortQueryObject = {};
-    // canonical comparators are location and date; if server is given a valid location, we sort by location; if not, we sort by date
+    // canonical comparators are location and date; if requestor passes a valid location, we sort by location; if not, we sort by date
     if (!isNaN(latitude) && !isNaN(longitude)) {
         // sort by distance from chosen location if latitude and longitude are passed in
         var locationQuery = { $nearSphere: [longitude, latitude] };
@@ -96,7 +99,7 @@ var getHappenings = function(req, res) {
         // create an array of all returned geonameID values
         var cityIdArray = happenings.map(function(happening){ return happening.location.geonameID});
         // run a query to get the full objects of all the cities that match these geonameID values
-        var projectionObject = {geonameID: 1, name: 1, countryCode: 1, loc: 1, admin1Code: 1, websiteUrl: 1, timezone:1, _id: 1};
+        var projectionObject = {geonameID: 1, name: 1, countryCode: 1, loc: 1, admin1Code: 1, websiteUrl: 1, timezone:1};
         City.find({geonameID: {$in: cityIdArray}}, projectionObject).exec(function(err, cities){
             // create an object so that each full city object is accessible with its geonameID as its key
             var cityObjectArray = {};
@@ -366,7 +369,7 @@ var putHappening = function(req, res){
 var getTags = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
     var searchString = queryParameters.searchstring.toLowerCase();
-    Happening.find({}, function(err, happenings) {
+    Happening.find({}, {tags: 1, _id: 0}, function(err, happenings) {
         var tags = [];
         happenings.forEach(function(happening){
             happening.get('tags').forEach(function(tag){
@@ -528,8 +531,5 @@ var treehouse = require('./treehouse');
 
 // parse the urlPathTree with setupRouters
 treehouse.setupRouters(app, urlPathTree, '/');
-
-var testExposure = 'exposed string';
-exports.testExposure = testExposure;
 
 app.listen(3000);
