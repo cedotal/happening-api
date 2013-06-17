@@ -20,13 +20,3 @@ db.cities.find().forEach(
 
 // drop all indices before creating new ones
 db.cities.dropIndex("*");
-
-// create GET /cities/search index
-db.cities.ensureIndex({
-    'nameLowerCase': 1,
-    'name': 1,
-    'loc': 1,
-    'countryCode': 1,
-    'geonameID': 1,
-    'admin1Code': 1
-});
