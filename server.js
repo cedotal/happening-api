@@ -93,7 +93,10 @@ var getHappenings = function(req, res) {
     queryObject['dates.endDate'] = { $gte: new Date() };
     // filter for tags if tags is passed in
     if (searchString !== undefined) {
-        queryObject.tags = {$regex: ('\\b' + searchString) };
+        queryObject.$or = [
+            {tags: {$regex: ('\\b' + searchString) }},
+            {name: {$regex: ('\\b' + searchString), $options: 'i' }}
+        ]
     };
     Happening.find(queryObject).limit(20).sort(sortQueryObject).exec(function(err, happenings) {
         // create an array of all returned geonameID values
