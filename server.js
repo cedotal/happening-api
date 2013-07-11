@@ -73,7 +73,7 @@ var City = mongoose.model('City', citySchema);
 // get a set of happenings filtered by tag, by location, or by nothing at all
 var getHappenings = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
-    var tags = queryParameters.tags;
+    var searchString = queryParameters.searchtring;
     var latitude = Number(queryParameters.latitude);
     var longitude = Number(queryParameters.longitude);
     var queryObject = {};
@@ -92,8 +92,8 @@ var getHappenings = function(req, res) {
     // this endpoint should only return future happenings
     queryObject['dates.endDate'] = { $gte: new Date() };
     // filter for tags if tags is passed in
-    if (tags !== undefined) {
-        queryObject.tags = tags;
+    if (searchString !== undefined) {
+        queryObject.searchString = searchString;
     };
     Happening.find(queryObject).limit(20).sort(sortQueryObject).exec(function(err, happenings) {
         // create an array of all returned geonameID values
@@ -208,7 +208,6 @@ var postHappening = function(req, res) {
                     },
                     websiteUrl: websiteUrl
                 });
-                console.log(happening);
                 happening.save();
                 res.send(happening);
             });
@@ -365,33 +364,27 @@ var putHappening = function(req, res){
     });
 };
 
-// function to be executed when a user tries to search for tags
-var getTags = function(req, res) {
+// function to get possible autocompletions for partially-entered search terms
+var getSearchstringAutocomplete = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
     var searchString = queryParameters.searchstring.toLowerCase();
-    Happening.find({}, {tags: 1, _id: 0}, function(err, happenings) {
+    Happening.find({tags: {$regex: ('\\b' + searchString) }}, {tags:1, _id:0}, function(err, happenings){
+        var regex = new RegExp('\\b' + searchString);
         var tags = [];
         happenings.forEach(function(happening){
             happening.get('tags').forEach(function(tag){
-                tags.push(tag);
+                if (regex.test(tag) === true) {
+                    tags.push(tag);
+                };
             });
         });
         tags = deDuplicateArray(tags);
-        tags = tags.filter(function(tag){
-            if (tag.slice(0, searchString.length) === searchString) {
-                return true;
-            }
-            else {
-                return false;
-            };
-        });
-        // now create the actual response
         res.send(tags);
     });
 };
 
 // define function to be executed when a user tries to search for cities
-var getCities = function(req, res) {
+var getCitiesAutocomplete = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
     var searchString = queryParameters.searchstring;
     var projectionObject = {
@@ -495,11 +488,11 @@ var urlPathTree = {
             }
         }
     },
-    tags: {
-        search: {
+    searchstrings: {
+        autocomplete: {
             _endpoint: {
                 GET: {
-                    method: getTags,
+                    method: getSearchstringAutocomplete,
                     parameterOptions: {
                         searchstring: {
                             type: 'string',
@@ -511,10 +504,10 @@ var urlPathTree = {
         }
     },
     cities: {
-        search: {
+        autocomplete: {
             _endpoint: {
                 GET: {
-                    method: getCities,
+                    method: getCitiesAutocomplete,
                     parameterOptions: {
                         searchstring: {
                             type: 'string',
