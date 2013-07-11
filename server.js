@@ -73,7 +73,7 @@ var City = mongoose.model('City', citySchema);
 // get a set of happenings filtered by tag, by location, or by nothing at all
 var getHappenings = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
-    var searchString = queryParameters.searchtring;
+    var searchString = queryParameters.searchstring;
     var latitude = Number(queryParameters.latitude);
     var longitude = Number(queryParameters.longitude);
     var queryObject = {};
@@ -93,7 +93,7 @@ var getHappenings = function(req, res) {
     queryObject['dates.endDate'] = { $gte: new Date() };
     // filter for tags if tags is passed in
     if (searchString !== undefined) {
-        queryObject.searchString = searchString;
+        queryObject.tags = {$regex: ('\\b' + searchString) };
     };
     Happening.find(queryObject).limit(20).sort(sortQueryObject).exec(function(err, happenings) {
         // create an array of all returned geonameID values
