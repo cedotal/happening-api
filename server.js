@@ -1,3 +1,4 @@
+
 // require express and create express object
 var express = require('express');
 var app = express();
@@ -115,8 +116,7 @@ var getHappenings = function(req, res) {
                 var newLocation = {};
                 newLocation.cityName = matchedCity.get('name');
                 newLocation.cityId = matchedCity.get('geonameID');
-                newLocation.latitude = matchedCity.get('loc').coordinates[1];
-                newLocation.longitude = matchedCity.get('loc').coordinates[0];
+                newLocation.loc = matchedCity.get('loc');
                 newLocation.countryCode = matchedCity.get('countryCode');
                 newLocation.admin1Code = matchedCity.get('admin1Code');
                 newLocation.timezone = matchedCity.get('timezone');
