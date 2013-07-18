@@ -372,6 +372,10 @@ var getSearchstringAutocomplete = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
     var searchString = queryParameters.searchstring.toLowerCase();
     Happening.find({tags: {$regex: ('\\b' + searchString) }}, {tags:1, _id:0}, function(err, happenings){
+        searchString.replace('\\', '\\\\');
+        if (searchString[searchString.length - 1] === '\\'){
+            searchString += '/';
+        };
         var regex = new RegExp('\\b' + searchString);
         var tags = [];
         happenings.forEach(function(happening){
