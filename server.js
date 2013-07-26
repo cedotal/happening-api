@@ -248,7 +248,21 @@ var getHappening = function(req, res){
     var happeningId = req.params.variable;
     var queryObject = { _id: happeningId };
     Happening.find(queryObject).exec(function(err, happenings) {
-        res.send(happenings);
+        happening = happenings[0];
+        var geonameID = happening.get('location').geonameID;
+        var projectionObject = {
+            '_id': 0,
+            'name': 1,
+            'loc': 1,
+            'countryCode': 1,
+            'geonameID': 1,
+            'admin1Code': 1,
+            'timezone': 1
+        };
+        City.find({geonameID: geonameID}, projectionObject, function(err, cities){
+            happening.set('location', cities[0]);
+            res.send(happening);
+        });
     });
 };
 
