@@ -154,10 +154,18 @@ var postHappening = function(req, res) {
         };
         // turn the tags string into an array
         tags = queryParameters.tags.split(',');
-        tags = deDuplicateArray(tags);
         // trim whitespace from ends of tags
         tags = tags.map(function(tag){
             return tag.replace(/^\s\s*/, '').replace(/\s\s*$/, '');
+        });
+        tags = deDuplicateArray(tags);
+        tags = tags.filter(function(tag){
+            if (tag !== ''){
+                return true;
+            }
+            else {
+                return false;
+            };
         });
         // check if url is complete; if not, modify it
         if (websiteUrl.substring(0,7) !== 'http://') {
