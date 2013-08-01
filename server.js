@@ -155,6 +155,10 @@ var postHappening = function(req, res) {
         // turn the tags string into an array
         tags = queryParameters.tags.split(',');
         tags = deDuplicateArray(tags);
+        // trim whitespace from ends of tags
+        tags = tags.map(function(tag){
+            return tag.replace(/^\s\s*/, '').replace(/\s\s*$/, '');
+        });
         // check if url is complete; if not, modify it
         if (websiteUrl.substring(0,7) !== 'http://') {
             websiteUrl = 'http://' + websiteUrl;
@@ -429,7 +433,7 @@ var preflightResponse = function(req, res) {
 
 // set up tree for parsing request Urls
 var urlPathTree = {
-    happenings: {
+    events: {
         _endpoint: {
             GET: {
                 method: getHappenings,
