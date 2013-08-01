@@ -26,6 +26,24 @@ function deDuplicateArray(array) {
    return newArray;
 };
 
+var sanitizeTagsArray = function(tags){
+    // trim whitespace from ends of tags
+    tags = tags.map(function(tag){
+        tag = tag.toLowerCase();
+        return tag.replace(/^\s\s*/, '').replace(/\s\s*$/, '');
+    });
+    tags = deDuplicateArray(tags);
+    tags = tags.filter(function(tag){
+        if (tag !== ''){
+            return true;
+        }
+        else {
+            return false;
+        };
+    });
+    return tags;
+};
+
 // performs a check to see if a target object is a duplicate of one already in the db
 var performDatabaseDupeCheck = function(queryObject, model, successFunction, failureFunction) {
     model.find(queryObject).exec(function(err, matches) {
@@ -145,28 +163,9 @@ var postHappening = function(req, res) {
         geonameID = Number(queryParameters.cityid),
         websiteUrl = queryParameters.websiteurl,
         tags = queryParameters.tags.toLowerCase();
-        // prevent users from adding a tag labelled as an empty string by beginning or ending a label name with a comma
-        if (tags[0] === ',') {
-            tags = tags.slice(1);
-        };
-        if (tags[tags.length - 1] === ',') {
-            tags = tags.slice(0, tags.length - 1);
-        };
         // turn the tags string into an array
         tags = queryParameters.tags.split(',');
-        // trim whitespace from ends of tags
-        tags = tags.map(function(tag){
-            return tag.replace(/^\s\s*/, '').replace(/\s\s*$/, '');
-        });
-        tags = deDuplicateArray(tags);
-        tags = tags.filter(function(tag){
-            if (tag !== ''){
-                return true;
-            }
-            else {
-                return false;
-            };
-        });
+        tags = sanitizeTagsArray(tags);
         // check if url is complete; if not, modify it
         if (websiteUrl.substring(0,7) !== 'http://') {
             websiteUrl = 'http://' + websiteUrl;
