@@ -69,7 +69,8 @@ var happeningSchema = mongoose.Schema({
         geonameID: Number,
         loc: {}
     },
-    websiteUrl: String
+    websiteUrl: String,
+    price: Number
 });
 
 var Happening = mongoose.model('Happening', happeningSchema);
@@ -143,6 +144,7 @@ var getHappenings = function(req, res) {
                 newHappening.name = happening.get('name');
                 newHappening.dates = happening.get('dates');
                 newHappening.tags = happening.get('tags');
+                newHappening.price = happening.get('price');
                 newHappening.websiteUrl = happening.get('websiteUrl');
                 newHappening._id = happening.get('_id');
                 newHappening.location = newLocation;
@@ -162,6 +164,7 @@ var postHappening = function(req, res) {
         name = queryParameters.name,
         geonameID = Number(queryParameters.cityid),
         websiteUrl = queryParameters.websiteurl,
+        price = queryParameters.price,
         tags = queryParameters.tags.toLowerCase();
         // turn the tags string into an array
         tags = queryParameters.tags.split(',');
@@ -170,6 +173,8 @@ var postHappening = function(req, res) {
         if (websiteUrl.substring(0,7) !== 'http://') {
             websiteUrl = 'http://' + websiteUrl;
         };
+        console.log('price after initially getting query params');
+        console.log(price);
         // a happening is a duplicate of another happening if all of the following are true:
         var queryObject = {
             // 1) it has the same name as an existing happening
@@ -203,6 +208,7 @@ var postHappening = function(req, res) {
         };
         var successFunction = function() {
             City.find({geonameID: geonameID}, {loc: 1}).exec(function(err, cityResult) {
+                console.log('inside successFunction');
                 var happening = new Happening({
                     name: name,
                     tags: tags,
@@ -220,8 +226,11 @@ var postHappening = function(req, res) {
                             ]
                         }
                     },
-                    websiteUrl: websiteUrl
+                    websiteUrl: websiteUrl,
+                    price: price
                 });
+                console.log('happening inside successFunction');
+                console.log(happening);
                 happening.save();
                 res.send(happening);
             });
@@ -302,6 +311,9 @@ var putHappening = function(req, res){
         };
         if (queryParameters.cityid !== undefined && queryParameters.cityid !== '') {
             happening.location = { geonameID: queryParameters.cityid };
+        };
+        if (queryParameters.price !== undefined && queryParameters.price !== '') {
+            happening.price = Number(queryParameters.price);
         };
         if (queryParameters.websiteurl !== undefined && queryParameters.websiteurl !== '') {
             var newUrl = queryParameters.websiteurl;
