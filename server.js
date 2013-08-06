@@ -173,8 +173,6 @@ var postHappening = function(req, res) {
         if (websiteUrl.substring(0,7) !== 'http://') {
             websiteUrl = 'http://' + websiteUrl;
         };
-        console.log('price after initially getting query params');
-        console.log(price);
         // a happening is a duplicate of another happening if all of the following are true:
         var queryObject = {
             // 1) it has the same name as an existing happening
@@ -208,7 +206,6 @@ var postHappening = function(req, res) {
         };
         var successFunction = function() {
             City.find({geonameID: geonameID}, {loc: 1}).exec(function(err, cityResult) {
-                console.log('inside successFunction');
                 var happening = new Happening({
                     name: name,
                     tags: tags,
@@ -229,8 +226,6 @@ var postHappening = function(req, res) {
                     websiteUrl: websiteUrl,
                     price: price
                 });
-                console.log('happening inside successFunction');
-                console.log(happening);
                 happening.save();
                 res.send(happening);
             });
@@ -251,7 +246,7 @@ var postHappening = function(req, res) {
             res.send(errorObject);
         }
         // can't create an event in the past
-        else if (beginDate < new Date()) {
+        else if (endDate < new Date()) {
             var errorObject = {
                 name: 'can\'t create past events',
                 message: 'you can\'t (yet) create events in the past'
