@@ -422,6 +422,20 @@ var getSearchstringAutocomplete = function(req, res) {
     });
 };
 
+// define function get a single city resource based on its geonameID
+var getCity = function(req, res) {
+    var queryParameters = (url.parse(req.url, true).query);
+    var geonameID = queryParameters.cityid;
+    City.find({ geonameID: geonameID }, function(err, city) {
+        if (city[0] !== undefined) {
+            res.send(city[0]);
+        }
+        else {
+            res.send('there are no cities with that id!');
+        };
+    });
+};
+
 // define function to be executed when a user tries to search for cities
 var getCitiesAutocomplete = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
@@ -543,6 +557,17 @@ var urlPathTree = {
         }
     },
     cities: {
+        _endpoint: {
+            GET: {
+                method: getCity,
+                parameterOptions: {
+                    cityid: {
+                        type: 'number',
+                        required: true
+                    }
+                }
+            }
+        },
         autocomplete: {
             _endpoint: {
                 GET: {
