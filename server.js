@@ -262,23 +262,28 @@ var postHappening = function(req, res) {
 var getHappening = function(req, res){
     var happeningId = req.params.variable;
     var queryObject = { _id: happeningId };
-    Happening.find(queryObject).exec(function(err, happenings) {
-        happening = happenings[0];
-        var geonameID = happening.get('location').geonameID;
-        var projectionObject = {
-            '_id': 0,
-            'name': 1,
-            'loc': 1,
-            'countryCode': 1,
-            'geonameID': 1,
-            'admin1Code': 1,
-            'timezone': 1
-        };
-        City.find({geonameID: geonameID}, projectionObject, function(err, cities){
-            happening.set('location', cities[0]);
-            res.send(happening);
+    var objectIdRegExp = new RegExp("^[0-9a-fA-F]{24}$");
+    if (objectIdRegExp.test(happeningId) === false) {
+        res.send('not a valid event id!');
+    }
+    else {
+        Happening.findOne(queryObject).exec(function(err, happening) {
+            var geonameID = happening.get('location').geonameID;
+            var projectionObject = {
+                '_id': 0,
+                'name': 1,
+                'loc': 1,
+                'countryCode': 1,
+                'geonameID': 1,
+                'admin1Code': 1,
+                'timezone': 1
+            };
+            City.find({geonameID: geonameID}, projectionObject, function(err, cities){
+                happening.set('location', cities[0]);
+                res.send(happening);
+            });
         });
-    });
+    };
 };
 
 // update a single happening at its resource URI
