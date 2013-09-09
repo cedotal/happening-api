@@ -304,10 +304,10 @@ var putHappening = function(req, res){
         // dates passed in from client application are in UTC, but we need to append ' UTC' so that the server stores them as the appropriate UTC date, rather than adding an additional offset for the server's local time
         // TODO: this is brittle
         if (queryParameters.begindate !== undefined && queryParameters.begindate !== '') {
-            happening.dates.beginDate = new Date(queryParameters.begindate + ' UTC');
+            happening.dates.beginDate = new Date(queryParameters.begindate);
         };
         if (queryParameters.enddate !== undefined && queryParameters.enddate !== '') {
-            happening.dates.endDate = new Date(queryParameters.enddate + ' UTC');
+            happening.dates.endDate = new Date(queryParameters.enddate);
         };
         if (queryParameters.cityid !== undefined && queryParameters.cityid !== '') {
             happening.location = { geonameID: queryParameters.cityid };
