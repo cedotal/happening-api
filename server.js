@@ -69,8 +69,7 @@ var happeningSchema = mongoose.Schema({
         geonameID: Number,
         loc: {}
     },
-    websiteUrl: String,
-    price: Number
+    websiteUrl: String
 });
 
 var Happening = mongoose.model('Happening', happeningSchema);
@@ -144,7 +143,6 @@ var getHappenings = function(req, res) {
                 newHappening.name = happening.get('name');
                 newHappening.dates = happening.get('dates');
                 newHappening.tags = happening.get('tags');
-                newHappening.price = happening.get('price');
                 newHappening.websiteUrl = happening.get('websiteUrl');
                 newHappening._id = happening.get('_id');
                 newHappening.location = newLocation;
@@ -164,7 +162,6 @@ var postHappening = function(req, res) {
         name = queryParameters.name,
         geonameID = Number(queryParameters.cityid),
         websiteUrl = queryParameters.websiteurl,
-        price = queryParameters.price,
         tags = queryParameters.tags.toLowerCase();
         // turn the tags string into an array
         tags = queryParameters.tags.split(',');
@@ -223,8 +220,7 @@ var postHappening = function(req, res) {
                             ]
                         }
                     },
-                    websiteUrl: websiteUrl,
-                    price: price
+                    websiteUrl: websiteUrl
                 });
                 happening.save();
                 res.send(happening);
@@ -311,9 +307,6 @@ var putHappening = function(req, res){
         };
         if (queryParameters.cityid !== undefined && queryParameters.cityid !== '') {
             happening.location = { geonameID: queryParameters.cityid };
-        };
-        if (queryParameters.price !== undefined && queryParameters.price !== '') {
-            happening.price = Number(queryParameters.price);
         };
         if (queryParameters.websiteurl !== undefined && queryParameters.websiteurl !== '') {
             var newUrl = queryParameters.websiteurl;
