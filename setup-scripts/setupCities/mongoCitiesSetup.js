@@ -11,10 +11,10 @@ db.cities.find().forEach(
 // remove the old latitude and longitude values from all collections
 db.cities.update({}, {$unset:{latitude:1, longitude:1} }, {multi: true});
 
-// add a "nameLowerCase" field for each city
+// add a "asciiNameLowerCase" field for each city
 db.cities.find().forEach(
     function(city){
-        db.cities.update(city, {$set:{ nameLowerCase: city.name.toLowerCase()}});
+        db.cities.update(city, {$set:{ asciiNameLowerCase: city.asciiName.toLowerCase()}});
     }
 );
 

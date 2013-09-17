@@ -132,7 +132,7 @@ var getHappenings = function(req, res) {
             var cityJoinedHappenings = happenings.map(function(happening){
                 var matchedCity = cityObjectArray[happening.location.geonameID];
                 var newLocation = {};
-                newLocation.cityName = matchedCity.get('name');
+                newLocation.cityName = matchedCity.get('asciiName');
                 newLocation.cityId = matchedCity.get('geonameID');
                 newLocation.loc = matchedCity.get('loc');
                 newLocation.countryCode = matchedCity.get('countryCode');
@@ -267,7 +267,7 @@ var getHappening = function(req, res){
             var geonameID = happening.get('location').geonameID;
             var projectionObject = {
                 '_id': 0,
-                'name': 1,
+                'asciiName': 1,
                 'loc': 1,
                 'countryCode': 1,
                 'geonameID': 1,
@@ -275,6 +275,7 @@ var getHappening = function(req, res){
                 'timezone': 1
             };
             City.find({geonameID: geonameID}, projectionObject, function(err, cities){
+                cities[0].set('name', cities[0].get('asciiName'));
                 happening.set('location', cities[0]);
                 res.send(happening);
             });
@@ -424,9 +425,10 @@ var getSearchstringAutocomplete = function(req, res) {
 var getCity = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
     var geonameID = queryParameters.cityid;
-    City.find({ geonameID: geonameID }, function(err, city) {
+    City.find({ geonameID: geonameID }, function(err, cities) {
         if (city[0] !== undefined) {
-            res.send(city[0]);
+            cities[0].set('name', cities[0].get('asciiName'));
+            res.send(cities[0]);
         }
         else {
             res.send('there are no cities with that id!');
@@ -440,14 +442,17 @@ var getCitiesAutocomplete = function(req, res) {
     var searchString = queryParameters.searchstring;
     var projectionObject = {
         '_id': 0,
-        'name': 1,
+        'asciiName': 1,
         'loc': 1,
         'countryCode': 1,
         'geonameID': 1,
         'admin1Code': 1,
         'timezone': 1
     };
-    City.find({ 'nameLowerCase': { $regex: '\\A' + searchString.toLowerCase() }}, projectionObject).limit(8).sort({population: -1}).exec( function(err, cities) {
+    City.find({ 'asciiNameLowerCase': { $regex: '\\A' + searchString.toLowerCase() }}, projectionObject).limit(8).sort({population: -1}).exec( function(err, cities) {
+        cities.forEach(function(city){
+            city.set('name', city.get('asciiName'));
+        });
         res.send(cities);
     });
 };
