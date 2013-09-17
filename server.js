@@ -121,7 +121,7 @@ var getHappenings = function(req, res) {
         // create an array of all returned geonameID values
         var cityIdArray = happenings.map(function(happening){ return happening.location.geonameID});
         // run a query to get the full objects of all the cities that match these geonameID values
-        var projectionObject = {geonameID: 1, name: 1, countryCode: 1, loc: 1, admin1Code: 1, websiteUrl: 1, timezone:1};
+        var projectionObject = {geonameID: 1, name: 1, countryCode: 1, loc: 1, admin1Code: 1, websiteUrl: 1, timezone:1, asciiName: 1};
         City.find({geonameID: {$in: cityIdArray}}, projectionObject).exec(function(err, cities){
             // create an object so that each full city object is accessible with its geonameID as its key
             var cityObjectArray = {};
