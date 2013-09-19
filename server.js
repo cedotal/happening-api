@@ -426,7 +426,7 @@ var getCity = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
     var geonameID = queryParameters.cityid;
     City.find({ geonameID: geonameID }, function(err, cities) {
-        if (city[0] !== undefined) {
+        if (cities[0] !== undefined) {
             cities[0].set('name', cities[0].get('asciiName'));
             res.send(cities[0]);
         }
