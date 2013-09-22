@@ -92,7 +92,7 @@ var City = mongoose.model('City', citySchema);
 // get a set of happenings filtered by tag, by location, or by nothing at all
 var getHappenings = function(req, res) {
     var queryParameters = (url.parse(req.url, true).query);
-    var searchString = queryParameters.searchstring;
+    var searchString = queryParameters.searchstring.toLowerCase();
     var latitude = Number(queryParameters.latitude);
     var longitude = Number(queryParameters.longitude);
     var queryObject = {};
